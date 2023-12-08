@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "clipboard")]
 use crate::ClipboardData;
 
 pub trait Actuator {
@@ -41,9 +41,14 @@ pub trait Actuator {
 
     fn leave(&mut self);
 
+    #[cfg(feature = "clipboard")]
     fn set_clipboard(&mut self, data: ClipboardData);
 }
 
+#[cfg(feature = "async-actuator")]
+use async_trait::async_trait;
+
+#[cfg(feature = "async-actuator")]
 #[async_trait]
 pub trait AsyncActuator {
     async fn connected(&mut self);
@@ -82,6 +87,7 @@ pub trait AsyncActuator {
 
     async fn leave(&mut self);
 
+    #[cfg(feature = "clipboard")]
     async fn set_clipboard(&mut self, data: ClipboardData);
 }
 
@@ -129,12 +135,15 @@ pub enum ActuatorMessage {
     ResetOptions,
     Enter,
     Leave,
+    #[cfg(feature = "clipboard")]
     SetClipboardText {
         data: String,
     },
+    #[cfg(feature = "clipboard")]
     SetClipboardHtml {
         data: String,
     },
+    #[cfg(feature = "clipboard")]
     SetClipboardBitmap {
         data: Vec<u8>,
     },

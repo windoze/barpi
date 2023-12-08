@@ -4,28 +4,10 @@ use tokio::{
     net::{TcpStream, ToSocketAddrs},
 };
 
+#[cfg(feature = "async-actuator")]
 use crate::actuator::AsyncActuator;
 
 use super::{Actuator, ConnectionError, Packet, PacketReader, PacketStream, PacketWriter};
-
-#[derive(Debug)]
-pub enum ClipboardStage {
-    None,
-    Mark1 { id: u8, data: Vec<u8> },
-    Mark2 { id: u8, data: Vec<u8> },
-    Mark3 { id: u8, data: Vec<u8> },
-}
-
-impl ClipboardStage {
-    pub fn stage(&self) -> u8 {
-        match self {
-            ClipboardStage::None => 0,
-            ClipboardStage::Mark1 { .. } => 1,
-            ClipboardStage::Mark2 { .. } => 2,
-            ClipboardStage::Mark3 { .. } => 3,
-        }
-    }
-}
 
 pub async fn start<A: Actuator, Addr: ToSocketAddrs>(
     addr: Addr,
@@ -54,9 +36,16 @@ pub async fn start<A: Actuator, Addr: ToSocketAddrs>(
 
     actor.connected();
 
-    let mut clipboard_stage = ClipboardStage::None;
+    #[cfg(feature = "clipboard")]
+    let mut clipboard_stage = crate::ClipboardStage::None;
     let mut packet_stream = PacketStream::new(stream);
-    while let Ok(packet) = packet_stream.read(&mut clipboard_stage).await {
+    while let Ok(packet) = packet_stream
+        .read(
+            #[cfg(feature = "clipboard")]
+            &mut clipboard_stage,
+        )
+        .await
+    {
         match packet {
             Packet::QueryInfo => {
                 packet_stream
@@ -127,6 +116,7 @@ pub async fn start<A: Actuator, Addr: ToSocketAddrs>(
                 actor.leave();
             }
             Packet::GrabClipboard { .. } => {}
+            #[cfg(feature = "clipboard")]
             Packet::SetClipboard { id, data } => {
                 if !data.is_empty() {
                     debug!("Clipboard: id:{id}, data:...");
@@ -145,6 +135,7 @@ pub async fn start<A: Actuator, Addr: ToSocketAddrs>(
     Err(ConnectionError::Disconnected)
 }
 
+#[cfg(feature = "async-actuator")]
 pub async fn start_async<A: AsyncActuator + Send + Unpin, Addr: ToSocketAddrs>(
     addr: Addr,
     device_name: String,
@@ -172,9 +163,16 @@ pub async fn start_async<A: AsyncActuator + Send + Unpin, Addr: ToSocketAddrs>(
 
     actor.connected().await;
 
-    let mut clipboard_stage = ClipboardStage::None;
+    #[cfg(feature = "clipboard")]
+    let mut clipboard_stage = crate::ClipboardStage::None;
     let mut packet_stream = PacketStream::new(stream);
-    while let Ok(packet) = packet_stream.read(&mut clipboard_stage).await {
+    while let Ok(packet) = packet_stream
+        .read(
+            #[cfg(feature = "clipboard")]
+            &mut clipboard_stage,
+        )
+        .await
+    {
         match packet {
             Packet::QueryInfo => {
                 match packet_stream
@@ -251,6 +249,7 @@ pub async fn start_async<A: AsyncActuator + Send + Unpin, Addr: ToSocketAddrs>(
                 actor.leave().await;
             }
             Packet::GrabClipboard { .. } => {}
+            #[cfg(feature = "clipboard")]
             Packet::SetClipboard { id, data } => {
                 if !data.is_empty() {
                     debug!("Clipboard: id:{id}, data:...");

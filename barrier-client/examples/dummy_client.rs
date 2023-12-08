@@ -1,8 +1,12 @@
 use std::collections::HashMap;
 
-use barrier_client::{self, start, Actuator, ClipboardData};
+use barrier_client::{self, start, Actuator};
 use env_logger::Env;
-use log::{debug, info};
+use log::info;
+
+#[cfg(feature = "clipboard")]
+use barrier_client::ClipboardData;
+
 
 struct DummyActuator {
     width: u16,
@@ -83,20 +87,21 @@ impl Actuator for DummyActuator {
         info!("Leave")
     }
 
+    #[cfg(feature = "clipboard")]
     fn set_clipboard(&mut self, data: ClipboardData) {
-        debug!(
+        info!(
             "Clipboard text:{}",
             data.text()
                 .map(|s| s.as_str().chars().take(20).collect::<String>() + "...")
                 .unwrap_or(String::from("<None>"))
         );
-        debug!(
+        info!(
             "Clipboard html:{}",
             data.html()
                 .map(|s| s.as_str().chars().take(20).collect::<String>() + "...")
                 .unwrap_or(String::from("<None>")),
         );
-        debug!(
+        info!(
             "Clipboard bitmap:{}",
             data.bitmap().map(|_| "yes").unwrap_or("no")
         );

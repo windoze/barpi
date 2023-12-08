@@ -5,6 +5,25 @@ use tokio::io::{AsyncRead, AsyncReadExt};
 
 use super::PacketError;
 
+#[derive(Debug)]
+pub enum ClipboardStage {
+    None,
+    Mark1 { id: u8, data: Vec<u8> },
+    Mark2 { id: u8, data: Vec<u8> },
+    Mark3 { id: u8, data: Vec<u8> },
+}
+
+impl ClipboardStage {
+    pub fn stage(&self) -> u8 {
+        match self {
+            ClipboardStage::None => 0,
+            ClipboardStage::Mark1 { .. } => 1,
+            ClipboardStage::Mark2 { .. } => 2,
+            ClipboardStage::Mark3 { .. } => 3,
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[repr(u8)]
 enum ClipboardFormat {

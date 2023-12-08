@@ -1,6 +1,5 @@
 mod actuator;
 mod client;
-mod clipboard;
 mod error;
 mod packet;
 mod packet_io;
@@ -11,9 +10,19 @@ pub(crate) use packet::Packet;
 pub(crate) use packet_io::{PacketReader, PacketWriter};
 pub(crate) use packet_stream::PacketStream;
 
-pub use actuator::{Actuator, ActuatorMessage, AsyncActuator};
-pub use client::{start, start_async};
+pub use actuator::{Actuator, ActuatorMessage};
+pub use client::start;
+#[cfg(feature = "async-actuator")]
+pub use actuator::AsyncActuator;
+#[cfg(feature = "async-actuator")]
+pub use client::start_async;
+
+#[cfg(feature = "clipboard")]
+mod clipboard;
+#[cfg(feature = "clipboard")]
 pub use clipboard::ClipboardData;
+#[cfg(feature = "clipboard")]
+pub(crate) use clipboard::ClipboardStage;
 
 #[cfg(test)]
 mod tests {

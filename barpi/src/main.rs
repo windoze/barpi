@@ -1,4 +1,4 @@
-use std::{time::Duration, thread::sleep};
+use std::{time::Duration, thread::sleep, env};
 
 use usb_gadget::{function::Handle, RegGadget, default_udc, Gadget, Class, Config, Id, Strings};
 
@@ -25,6 +25,18 @@ pub fn reg(func: Handle) -> RegGadget {
     sleep(Duration::from_secs(3));
 
     reg
+}
+
+
+pub fn unreg(mut reg: RegGadget) -> std::io::Result<bool> {
+    if env::var_os("KEEP_GADGET").is_some() {
+        reg.detach();
+        Ok(false)
+    } else {
+        reg.remove()?;
+        sleep(Duration::from_secs(1));
+        Ok(true)
+    }
 }
 
 fn main() {

@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
+#[cfg(feature = "clipboard")]
 use log::{debug, warn};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
-use crate::{client::ClipboardStage, clipboard::parse_clipboard};
+#[cfg(feature = "clipboard")]
+use crate::{clipboard::parse_clipboard, ClipboardStage};
 
 use super::{Packet, PacketError, PacketReader, PacketWriter};
 
@@ -32,7 +34,7 @@ impl<S: PacketReader + PacketWriter> PacketStream<S> {
 
     pub async fn read(
         &mut self,
-        clipboard_stage: &mut ClipboardStage,
+        #[cfg(feature = "clipboard")] clipboard_stage: &mut ClipboardStage,
     ) -> Result<Packet, PacketError> {
         let size = self.stream.as_mut().unwrap().read_packet_size().await?;
         if size < 4 {
@@ -41,7 +43,15 @@ impl<S: PacketReader + PacketWriter> PacketStream<S> {
             return Err(PacketError::PacketTooSmall);
         }
         let mut chunk = self.stream.take().unwrap().take(size as u64);
-        match Self::do_read(&mut chunk, clipboard_stage, size).await {
+        match Self::do_read(
+            &mut chunk,
+            #[cfg(feature = "clipboard")]
+            clipboard_stage,
+            #[cfg(feature = "clipboard")]
+            size,
+        )
+        .await
+        {
             Ok(packet) => {
                 self.stream = Some(chunk.into_inner());
                 Ok(packet)
@@ -55,8 +65,8 @@ impl<S: PacketReader + PacketWriter> PacketStream<S> {
 
     async fn do_read<T: AsyncRead + Send + Unpin>(
         chunk: &mut T,
-        clipboard_stage: &mut ClipboardStage,
-        size: u32,
+        #[cfg(feature = "clipboard")] clipboard_stage: &mut ClipboardStage,
+        #[cfg(feature = "clipboard")] size: u32,
     ) -> Result<Packet, PacketError> {
         let code: [u8; 4] = chunk.read_bytes_fixed().await?;
         // if size > 2048 {
@@ -112,6 +122,7 @@ impl<S: PacketReader + PacketWriter> PacketStream<S> {
                 let seq_num = chunk.read_u32().await?;
                 Packet::GrabClipboard { id, seq_num }
             }
+            #[cfg(feature = "clipboard")]
             b"DCLP" => {
                 let id = chunk.read_u8().await?;
                 let _seq_num = chunk.read_u32().await?;

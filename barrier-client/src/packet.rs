@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
+#[cfg(feature = "clipboard")]
 use crate::ClipboardData;
 
 use super::{PacketError, PacketWriter};
@@ -29,6 +30,7 @@ pub enum Packet {
         id: u8,
         seq_num: u32,
     },
+    #[cfg(feature = "clipboard")]
     SetClipboard {
         id: u8,
         data: ClipboardData,
