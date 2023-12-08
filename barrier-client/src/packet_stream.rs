@@ -1,9 +1,7 @@
-use std::collections::HashMap;
-
 use async_trait::async_trait;
 #[cfg(feature = "clipboard")]
 use log::{debug, warn};
-use tokio::io::{AsyncRead, AsyncReadExt};
+use tokio::io::{AsyncRead, AsyncReadExt, Take};
 
 #[cfg(feature = "clipboard")]
 use crate::{clipboard::parse_clipboard, ClipboardStage};
@@ -38,8 +36,12 @@ impl<S: PacketReader + PacketWriter> PacketStream<S> {
     ) -> Result<Packet, PacketError> {
         let size = self.stream.as_mut().unwrap().read_packet_size().await?;
         if size < 4 {
-            let mut vec = Vec::new();
-            self.stream.as_mut().unwrap().read_to_end(&mut vec).await?;
+            let mut buf = [0; 4];
+            self.stream
+                .as_mut()
+                .unwrap()
+                .read_exact(&mut buf[0..size as usize])
+                .await?;
             return Err(PacketError::PacketTooSmall);
         }
         let mut chunk = self.stream.take().unwrap().take(size as u64);
@@ -64,27 +66,23 @@ impl<S: PacketReader + PacketWriter> PacketStream<S> {
     }
 
     async fn do_read<T: AsyncRead + Send + Unpin>(
-        chunk: &mut T,
+        chunk: &mut Take<T>,
         #[cfg(feature = "clipboard")] clipboard_stage: &mut ClipboardStage,
         #[cfg(feature = "clipboard")] size: u32,
     ) -> Result<Packet, PacketError> {
         let code: [u8; 4] = chunk.read_bytes_fixed().await?;
-        // if size > 2048 {
-        //     warn!("Packet too large, discarding {} bytes", size);
-        //     chunk.discard_all().await?;
-        //     return Ok(Packet::Unknown(code));
-        // }
 
         let packet = match code.as_ref() {
             b"QINF" => Packet::QueryInfo,
             b"CIAK" => Packet::InfoAck,
             b"CALV" => Packet::KeepAlive,
-            // We don't really have any option to set and reset
-            // b"CROP" => Packet::ResetOptions,
+            #[cfg(feature = "barrier-options")]
+            b"CROP" => Packet::ResetOptions,
+            #[cfg(feature = "barrier-options")]
             b"DSOP" => {
                 let num_items = chunk.read_u32().await?;
                 let num_opts = num_items / 2;
-                let mut options: HashMap<String, u32> = HashMap::new();
+                let mut options: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
                 // Currently only HBRT(Heartbeat interval) is supported
                 for _ in 0..num_opts {
                     let opt: [u8; 4] = chunk.read_bytes_fixed().await?;
@@ -275,10 +273,13 @@ impl<S: PacketReader + PacketWriter> PacketStream<S> {
         };
 
         // Discard the rest of the packet
-        // warn!(
-        //     "Discarding rest of packet, code: {}",
-        //     String::from_utf8_lossy(code.as_ref())
-        // );
+        if chunk.limit() > 0 {
+            debug!(
+                "Discarding {} bytes, code: {}",
+                chunk.limit(),
+                std::str::from_utf8(&code).unwrap_or("????"),
+            );
+        }
         chunk.discard_all().await?;
 
         Ok(packet)

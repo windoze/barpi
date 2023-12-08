@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 #[cfg(feature = "clipboard")]
@@ -22,9 +20,11 @@ pub enum Packet {
     },
     InfoAck,
     KeepAlive,
-    ResetOptions,
     ClientNoOp,
-    SetDeviceOptions(HashMap<String, u32>),
+    #[cfg(feature = "barrier-options")]
+    ResetOptions,
+    #[cfg(feature = "barrier-options")]
+    SetDeviceOptions(std::collections::HashMap<String, u32>),
     ErrorUnknownDevice,
     GrabClipboard {
         id: u8,

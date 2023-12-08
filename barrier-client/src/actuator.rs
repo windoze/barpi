@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "clipboard")]
@@ -33,8 +31,10 @@ pub trait Actuator {
 
     fn key_up(&mut self, key: u16, mask: u16, button: u16);
 
-    fn set_options(&mut self, opts: HashMap<String, u32>);
+    #[cfg(feature = "barrier-options")]
+    fn set_options(&mut self, opts: std::collections::HashMap<String, u32>);
 
+    #[cfg(feature = "barrier-options")]
     fn reset_options(&mut self);
 
     fn enter(&mut self);
@@ -79,8 +79,10 @@ pub trait AsyncActuator {
 
     async fn key_up(&mut self, key: u16, mask: u16, button: u16);
 
-    async fn set_options(&mut self, opts: HashMap<String, u32>);
+    #[cfg(feature = "barrier-options")]
+    async fn set_options(&mut self, opts: std::collections::HashMap<String,u32>);
 
+    #[cfg(feature = "barrier-options")]
     async fn reset_options(&mut self);
 
     async fn enter(&mut self);
@@ -129,9 +131,11 @@ pub enum ActuatorMessage {
         mask: u16,
         button: u16,
     },
+    #[cfg(feature = "barrier-options")]
     SetOptions {
-        opts: HashMap<String, u32>,
+        opts: std::collections::HashMap<String, u32>,
     },
+    #[cfg(feature = "barrier-options")]
     ResetOptions,
     Enter,
     Leave,

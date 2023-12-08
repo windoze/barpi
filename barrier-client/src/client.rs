@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, error};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpStream, ToSocketAddrs},
@@ -21,7 +21,14 @@ pub async fn start<A: Actuator, Addr: ToSocketAddrs>(
     stream.set_nodelay(true).ok();
 
     let _size = stream.read_packet_size().await?;
-    stream.read_str_lit("Barrier").await?;
+    if stream.read_bytes_fixed::<7>().await? == [b'B', b'a', b'r', b'r', b'i', b'e', b'r'] {
+        debug!("Got hello");
+    } else {
+        error!("Got invalid hello");
+        return Err(ConnectionError::ProtocolError(
+            crate::error::PacketError::FormatError,
+        ));
+    }
     let major = stream.read_u16().await?;
     let minor = stream.read_u16().await?;
     debug!("Got hello {major}:{minor}");
@@ -38,6 +45,7 @@ pub async fn start<A: Actuator, Addr: ToSocketAddrs>(
 
     #[cfg(feature = "clipboard")]
     let mut clipboard_stage = crate::ClipboardStage::None;
+
     let mut packet_stream = PacketStream::new(stream);
     while let Ok(packet) = packet_stream
         .read(
@@ -103,9 +111,11 @@ pub async fn start<A: Actuator, Addr: ToSocketAddrs>(
             }
             Packet::InfoAck => { //Ignore
             }
+            #[cfg(feature = "barrier-options")]
             Packet::ResetOptions => {
                 actor.reset_options();
             }
+            #[cfg(feature = "barrier-options")]
             Packet::SetDeviceOptions(opts) => {
                 actor.set_options(opts);
             }
@@ -148,7 +158,14 @@ pub async fn start_async<A: AsyncActuator + Send + Unpin, Addr: ToSocketAddrs>(
     stream.set_nodelay(true).ok();
 
     let _size = stream.read_packet_size().await?;
-    stream.read_str_lit("Barrier").await?;
+    if stream.read_bytes_fixed::<7>().await? == [b'B', b'a', b'r', b'r', b'i', b'e', b'r'] {
+        debug!("Got hello");
+    } else {
+        error!("Got invalid hello");
+        return Err(ConnectionError::ProtocolError(
+            crate::error::PacketError::FormatError,
+        ));
+    }
     let major = stream.read_u16().await?;
     let minor = stream.read_u16().await?;
     debug!("Got hello {major}:{minor}");
@@ -236,9 +253,11 @@ pub async fn start_async<A: AsyncActuator + Send + Unpin, Addr: ToSocketAddrs>(
             }
             Packet::InfoAck => { //Ignore
             }
+            #[cfg(feature = "barrier-options")]
             Packet::ResetOptions => {
                 actor.reset_options().await;
             }
+            #[cfg(feature = "barrier-options")]
             Packet::SetDeviceOptions(opts) => {
                 actor.set_options(opts).await;
             }

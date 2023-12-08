@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use barrier_client::{self, start, Actuator};
 use env_logger::Env;
 use log::info;
@@ -7,13 +5,13 @@ use log::info;
 #[cfg(feature = "clipboard")]
 use barrier_client::ClipboardData;
 
-
 struct DummyActuator {
     width: u16,
     height: u16,
     x: u16,
     y: u16,
-    options: HashMap<String, u32>,
+    #[cfg(feature = "barrier-options")]
+    options: std::collections::HashMap<String, u32>,
 }
 
 impl Actuator for DummyActuator {
@@ -69,11 +67,13 @@ impl Actuator for DummyActuator {
         info!("Key up {key} {mask} {button}")
     }
 
+    #[cfg(feature = "barrier-options")]
     fn set_options(&mut self, opts: std::collections::HashMap<String, u32>) {
         self.options = opts;
         info!("Set options {:#?}", self.options)
     }
 
+    #[cfg(feature = "barrier-options")]
     fn reset_options(&mut self) {
         self.options.clear();
         info!("Reset options")
@@ -116,7 +116,8 @@ async fn main() {
         height: 1080,
         x: 0,
         y: 0,
-        options: HashMap::new(),
+        #[cfg(feature = "barrier-options")]
+        options: std::collections::HashMap::new(),
     };
     start("192.168.2.59:24800", String::from("BARPI"), &mut actuator)
         .await
