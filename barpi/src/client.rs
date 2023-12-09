@@ -1,7 +1,7 @@
 use std::{fs::File, io::Write};
 
 use barrier_client::{Actuator, ClipboardData};
-use log::{info, debug};
+use log::{info, debug, error};
 use synergy_hid::{ReportType, SynergyHid};
 use tokio_util::sync::CancellationToken;
 pub struct DummyActuator {
@@ -55,7 +55,7 @@ impl DummyActuator {
         match r {
             Ok(_) => (),
             Err(e) => {
-                info!("Error writing report: {:?}", e);
+                error!("Error writing report: {:?}", e);
                 self.token.cancel();
             }
         }
@@ -141,11 +141,11 @@ impl Actuator for DummyActuator {
     }
 
     fn set_options(&mut self, opts: std::collections::HashMap<String, u32>) {
-        info!("Set options {:#?}", opts)
+        debug!("Set options {:#?}", opts)
     }
 
     fn reset_options(&mut self) {
-        info!("Reset options")
+        debug!("Reset options")
     }
 
     fn set_clipboard(&mut self, data: ClipboardData) {

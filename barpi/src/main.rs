@@ -1,9 +1,13 @@
-use std::{env, os::linux::fs::MetadataExt, path::PathBuf, thread::sleep, time::Duration};
+use std::{
+    env, fs::File, io::BufReader, os::linux::fs::MetadataExt, path::PathBuf, thread::sleep,
+    time::Duration,
+};
 
 use barrier_client::start;
 use clap::Parser;
+use clap_serde_derive::{serde::Serialize, ClapSerde};
 use env_logger::Env;
-use log::{info, warn};
+use log::{debug, info, warn};
 use synergy_hid::{ReportType, SynergyHid};
 use tokio::{
     select,
@@ -18,8 +22,22 @@ use usb_gadget::{
 
 mod client;
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[derive(Parser)]
+#[command(author, version, about)]
+struct Args {
+    /// Input files
+    input: Vec<std::path::PathBuf>,
+
+    /// Config file
+    #[arg(short, long = "config", default_value = "config.yml")]
+    config_path: std::path::PathBuf,
+
+    /// Rest of arguments
+    #[command(flatten)]
+    pub config: <BarpiConfig as ClapSerde>::Opt,
+}
+
+#[derive(ClapSerde, Serialize, Debug)]
 pub struct BarpiConfig {
     /// Barrier server address in "server:port" format
     #[arg(short = 's', long, env = "BARRIER_SERVER")]
@@ -132,7 +150,19 @@ fn get_hid_func(report_type: ReportType) -> (Hid, Handle) {
 async fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
-    let cfg = BarpiConfig::parse();
+    let mut args = Args::parse();
+
+    let cfg = if let Ok(f) = File::open(&args.config_path) {
+        // Parse config with serde
+        match serde_yaml::from_reader::<_, <BarpiConfig as ClapSerde>::Opt>(BufReader::new(f)) {
+            // merge config already parsed from clap
+            Ok(config) => BarpiConfig::from(config).merge(&mut args.config),
+            Err(err) => panic!("Error in configuration file:\n{}", err),
+        }
+    } else {
+        // If there is not config file return only config parsed from clap
+        BarpiConfig::from(&mut args.config)
+    };
 
     usb_gadget::remove_all().expect("cannot remove all gadgets");
 
@@ -142,29 +172,29 @@ async fn main() {
 
     let reg = reg(vec![keyboard_func, mouse_func, consumer_func], &cfg);
 
-    println!(
+    debug!(
         "HID keyboard device {:?} at {}",
         keyboard.device().unwrap(),
         keyboard.status().path().unwrap().display()
     );
     let keyboard_path = get_dev_for_hid(&keyboard).unwrap();
-    println!("Dev file at {:?}", keyboard_path);
+    debug!("Dev file at {:?}", keyboard_path);
 
-    println!(
+    debug!(
         "HID mouse device {:?} at {}",
         mouse.device().unwrap(),
         mouse.status().path().unwrap().display()
     );
     let mouse_path = get_dev_for_hid(&mouse).unwrap();
-    println!("Dev file at {:?}", mouse_path);
+    debug!("Dev file at {:?}", mouse_path);
 
-    println!(
+    debug!(
         "HID consumer control device {:?} at {}",
         consumer.device().unwrap(),
         consumer.status().path().unwrap().display()
     );
     let consumer_path = get_dev_for_hid(&consumer).unwrap();
-    println!("Dev file at {:?}", consumer_path);
+    debug!("Dev file at {:?}", consumer_path);
 
     let fk = std::fs::File::create(keyboard_path).unwrap();
     let fm = std::fs::File::create(mouse_path).unwrap();

@@ -16,3 +16,6 @@ env_logger = "0.10"
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7"
 clap = { version = "4", features = ["derive", "env"] }
+clap-serde-derive = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
