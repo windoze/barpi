@@ -162,9 +162,12 @@ impl SynergyHid {
         y: i16,
         report: &'a mut [u8],
     ) -> (ReportType, &'a [u8]) {
-        let x = x as i8;
+        let x = (x as f32  / 120.0) as i16;
+        let y = (y as f32  / 120.0) as i16;
+        let mut x = x as i8;
         let mut y = y as i8;
         if self.flip_mouse_wheel {
+            x = -x;
             y = -y;
         }
         report[..7].copy_from_slice(&self.mouse_report.mouse_wheel(y, x));
