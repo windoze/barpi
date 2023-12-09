@@ -1,10 +1,14 @@
 use std::{env, os::linux::fs::MetadataExt, path::PathBuf, thread::sleep, time::Duration};
 
 use barrier_client::start;
+use clap::Parser;
 use env_logger::Env;
-use log::{warn, info};
+use log::{info, warn};
 use synergy_hid::{ReportType, SynergyHid};
-use tokio::{select, signal::unix::{signal, SignalKind}};
+use tokio::{
+    select,
+    signal::unix::{signal, SignalKind},
+};
 use tokio_util::sync::CancellationToken;
 use usb_gadget::{
     default_udc,
@@ -14,7 +18,38 @@ use usb_gadget::{
 
 mod client;
 
-pub fn reg(funcs: Vec<Handle>) -> RegGadget {
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+pub struct BarpiConfig {
+    /// Barrier server address in "server:port" format
+    #[arg(short = 's', long, env = "BARRIER_SERVER")]
+    pub server: String,
+    /// Screen name, must be accepted by the Barrier server
+    #[arg(short = 'n', long, env = "SCREEN_NAME")]
+    pub screen_name: String,
+    /// Screen width
+    #[arg(short = 'w', long, default_value = "1920", env = "SCREEN_WIDTH")]
+    pub screen_width: u16,
+    /// Screen height
+    #[arg(short = 'e', long, default_value = "1080", env = "SCREEN_HEIGHT")]
+    pub screen_height: u16,
+    /// Flip mouse wheel
+    #[arg(short = 'f', long, default_value = "false")]
+    pub flip_mouse_wheel: bool,
+
+    #[arg(hide = true, long, default_value = "3338")]
+    pub usb_vid: u16,
+    #[arg(hide = true, long, default_value = "49374")]
+    pub usb_pid: u16,
+    #[arg(hide = true, long, default_value = "0d0a.com")]
+    pub usb_manufacturer: String,
+    #[arg(hide = true, long, default_value = "BarPi HID Device")]
+    pub usb_product: String,
+    #[arg(hide = true, long, default_value = "0000000000000001")]
+    pub usb_serial: String,
+}
+
+pub fn reg(funcs: Vec<Handle>, cfg: &BarpiConfig) -> RegGadget {
     let udc = default_udc().expect("cannot get UDC");
 
     let mut config = Config::new("config");
@@ -23,9 +58,9 @@ pub fn reg(funcs: Vec<Handle>) -> RegGadget {
     }
 
     let reg = Gadget::new(
-        Class::new(1, 2, 3),
-        Id::new(4, 5),
-        Strings::new("manufacturer", "product", "serial_number"),
+        Class::new(0, 0, 0),
+        Id::new(cfg.usb_vid, cfg.usb_pid),
+        Strings::new(&cfg.usb_manufacturer, &cfg.usb_product, &cfg.usb_serial),
     )
     .with_config(config)
     .bind(&udc)
@@ -97,11 +132,15 @@ fn get_hid_func(report_type: ReportType) -> (Hid, Handle) {
 async fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
+    let cfg = BarpiConfig::parse();
+
+    usb_gadget::remove_all().expect("cannot remove all gadgets");
+
     let (keyboard, keyboard_func) = get_hid_func(ReportType::Keyboard);
     let (mouse, mouse_func) = get_hid_func(ReportType::Mouse);
     let (consumer, consumer_func) = get_hid_func(ReportType::Consumer);
 
-    let reg = reg(vec![keyboard_func, mouse_func, consumer_func]);
+    let reg = reg(vec![keyboard_func, mouse_func, consumer_func], &cfg);
 
     println!(
         "HID keyboard device {:?} at {}",
@@ -130,14 +169,23 @@ async fn main() {
     let fk = std::fs::File::create(keyboard_path).unwrap();
     let fm = std::fs::File::create(mouse_path).unwrap();
     let fc = std::fs::File::create(consumer_path).unwrap();
-    let mut client = client::DummyActuator::new(1920, 1080, false, fk, fm, fc);
 
     let token = CancellationToken::new();
-    let cloned_token = token.clone();
+
+    let cloned_token: CancellationToken = token.clone();
+    let mut client = client::DummyActuator::new(
+        cfg.screen_width,
+        cfg.screen_width,
+        cfg.flip_mouse_wheel,
+        fk,
+        fm,
+        fc,
+        cloned_token,
+    );
 
     let main_task = async move {
         loop {
-            match start("192.168.2.59:24800", String::from("BARPI"), &mut client).await {
+            match start(&cfg.server, &cfg.screen_name, &mut client).await {
                 Ok(_) => {}
                 Err(e) => {
                     warn!("Error: {:?}", e);
@@ -147,6 +195,7 @@ async fn main() {
         }
     };
 
+    let cloned_token: CancellationToken = token.clone();
     tokio::task::spawn(async move {
         let mut sigterm = signal(SignalKind::terminate()).unwrap();
         let mut sigint = signal(SignalKind::interrupt()).unwrap();

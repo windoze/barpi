@@ -15,3 +15,4 @@ glob = "0.3.1"
 env_logger = "0.10"
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7"
+clap = { version = "4", features = ["derive", "env"] }

@@ -3,6 +3,7 @@ use std::{fs::File, io::Write};
 use barrier_client::{Actuator, ClipboardData};
 use log::{info, debug};
 use synergy_hid::{ReportType, SynergyHid};
+use tokio_util::sync::CancellationToken;
 pub struct DummyActuator {
     width: u16,
     height: u16,
@@ -12,6 +13,7 @@ pub struct DummyActuator {
     keyboard_file: File,
     mouse_file: File,
     consumer_file: File,
+    token: CancellationToken,
 }
 
 impl DummyActuator {
@@ -22,6 +24,7 @@ impl DummyActuator {
         keyboard_file: File,
         mouse_file: File,
         consumer_file: File,
+        token: CancellationToken,
     ) -> Self {
         Self {
             width,
@@ -32,6 +35,7 @@ impl DummyActuator {
             keyboard_file,
             mouse_file,
             consumer_file,
+            token
         }
     }
 
@@ -43,10 +47,17 @@ impl DummyActuator {
     }
 
     fn write_report(&mut self, report: (ReportType, &[u8])) {
-        match report.0 {
-            ReportType::Keyboard => self.keyboard_file.write_all(report.1).unwrap(),
-            ReportType::Mouse => self.mouse_file.write_all(report.1).unwrap(),
-            ReportType::Consumer => self.consumer_file.write_all(report.1).unwrap(),
+        let r = match report.0 {
+            ReportType::Keyboard => self.keyboard_file.write_all(report.1),
+            ReportType::Mouse => self.mouse_file.write_all(report.1),
+            ReportType::Consumer => self.consumer_file.write_all(report.1),
+        };
+        match r {
+            Ok(_) => (),
+            Err(e) => {
+                info!("Error writing report: {:?}", e);
+                self.token.cancel();
+            }
         }
     }
 }

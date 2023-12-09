@@ -9,9 +9,9 @@ use crate::actuator::AsyncActuator;
 
 use super::{Actuator, ConnectionError, Packet, PacketReader, PacketStream, PacketWriter};
 
-pub async fn start<A: Actuator, Addr: ToSocketAddrs>(
+pub async fn start<A: Actuator, Addr: ToSocketAddrs, S: AsRef<str>>(
     addr: Addr,
-    device_name: String,
+    device_name: S,
     actor: &mut A,
 ) -> Result<(), ConnectionError> {
     let screen_size: (u16, u16) = actor.get_screen_size();
@@ -34,12 +34,12 @@ pub async fn start<A: Actuator, Addr: ToSocketAddrs>(
     debug!("Got hello {major}:{minor}");
 
     stream
-        .write_u32("Barrier".len() as u32 + 2 + 2 + 4 + device_name.bytes().len() as u32)
+        .write_u32("Barrier".len() as u32 + 2 + 2 + 4 + device_name.as_ref().bytes().len() as u32)
         .await?;
     stream.write_all(b"Barrier").await?;
     stream.write_u16(1).await?;
     stream.write_u16(6).await?;
-    stream.write_str(&device_name).await?;
+    stream.write_str(device_name.as_ref()).await?;
 
     actor.connected();
 
@@ -137,7 +137,10 @@ pub async fn start<A: Actuator, Addr: ToSocketAddrs>(
                 // Server only packets
             }
             Packet::Unknown(cmd) => {
-                debug!("Unknown packet: {}", core::str::from_utf8(&cmd).unwrap_or("????") );
+                debug!(
+                    "Unknown packet: {}",
+                    core::str::from_utf8(&cmd).unwrap_or("????")
+                );
             }
         }
     }
@@ -279,7 +282,10 @@ pub async fn start_async<A: AsyncActuator + Send + Unpin, Addr: ToSocketAddrs>(
                 // Server only packets
             }
             Packet::Unknown(cmd) => {
-                debug!("Unknown packet: {}", core::str::from_utf8(&cmd).unwrap_or("????") );
+                debug!(
+                    "Unknown packet: {}",
+                    core::str::from_utf8(&cmd).unwrap_or("????")
+                );
             }
         }
     }
