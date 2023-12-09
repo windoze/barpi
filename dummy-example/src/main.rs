@@ -33,11 +33,8 @@ impl Actuator for DummyActuator {
         self.x = x;
         self.y = y;
         let report = &mut [0; 9];
-        let sz = self.hid.set_cursor_position(x, y, report);
-        info!(
-            "Set cursor position to {x} {y}, HID report: {:?}",
-            &report[0..sz]
-        );
+        let ret = self.hid.set_cursor_position(x, y, report);
+        info!("Set cursor position to {x} {y}, HID report: {:?}", ret);
     }
 
     fn move_cursor(&mut self, x: i16, y: i16) {
@@ -48,32 +45,26 @@ impl Actuator for DummyActuator {
 
     fn mouse_down(&mut self, button: i8) {
         let report = &mut [0; 9];
-        let sz = self.hid.mouse_down(button, report);
-        info!(
-            "Mouse button {button} down, HID report: {:?}",
-            &report[0..sz]
-        );
+        let ret = self.hid.mouse_down(button, report);
+        info!("Mouse button {button} down, HID report: {:?}", ret);
     }
 
     fn mouse_up(&mut self, button: i8) {
         let report = &mut [0; 9];
-        let sz = self.hid.mouse_up(button, report);
-        info!("Mouse button {button} up, HID report: {:?}", &report[0..sz]);
+        let ret = self.hid.mouse_up(button, report);
+        info!("Mouse button {button} up, HID report: {:?}", ret);
     }
 
     fn mouse_wheel(&mut self, x: i16, y: i16) {
         let report = &mut [0; 9];
-        let sz = self.hid.mouse_scroll(x, y, report);
-        info!("Mouse wheel {x} {y}, HID report: {:?}", &report[0..sz]);
+        let ret = self.hid.mouse_scroll(x, y, report);
+        info!("Mouse wheel {x} {y}, HID report: {:?}", ret);
     }
 
     fn key_down(&mut self, key: u16, mask: u16, button: u16) {
         let report = &mut [0; 9];
-        let sz = self.hid.key_down(key, mask, button, report);
-        info!(
-            "Key down {key} {mask} {button}, HID report: {:?}",
-            &report[0..sz]
-        );
+        let ret = self.hid.key_down(key, mask, button, report);
+        info!("Key down {key} {mask} {button}, HID report: {:?}", ret);
     }
 
     fn key_repeat(&mut self, key: u16, mask: u16, button: u16, count: u16) {
@@ -82,11 +73,8 @@ impl Actuator for DummyActuator {
 
     fn key_up(&mut self, key: u16, mask: u16, button: u16) {
         let report = &mut [0; 9];
-        let sz = self.hid.key_up(key, mask, button, report);
-        info!(
-            "Key up {key} {mask} {button}, HID report: {:?}",
-            &report[0..sz]
-        );
+        let ret = self.hid.key_up(key, mask, button, report);
+        info!("Key up {key} {mask} {button}, HID report: {:?}", ret);
     }
 
     fn enter(&mut self) {

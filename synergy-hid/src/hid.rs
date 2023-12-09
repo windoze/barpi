@@ -1,5 +1,3 @@
-pub const HID_REPORT_DESCRIPTOR: &[u8] = &[];
-
 #[derive(Debug, Default)]
 pub struct AbsMouseReport {
     button: u8,

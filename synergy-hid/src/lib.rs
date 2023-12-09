@@ -1,12 +1,24 @@
 use log::{debug, warn};
 
+mod descriptors;
 mod hid;
 mod keycodes;
 
 pub(crate) use hid::*;
 pub(crate) use keycodes::{synergy_mouse_button, synergy_to_hid, KeyCode};
 
-pub use hid::HID_REPORT_DESCRIPTOR;
+pub(crate) use descriptors::{
+    ABSOLUTE_WHEEL_MOUSE_REPORT_DESCRIPTOR, BOOT_KEYBOARD_REPORT_DESCRIPTOR,
+    CONSUMER_CONTROL_REPORT_DESCRIPTOR,
+};
+
+#[repr(u8)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ReportType {
+    Keyboard = 1,
+    Mouse = 2,
+    Consumer = 3,
+}
 
 #[derive(Debug)]
 pub struct SynergyHid {
@@ -17,8 +29,11 @@ pub struct SynergyHid {
     y: u16,
     server_buttons: [u16; 512],
 
+    // Report 1
     keyboard_report: KeyboardReport,
+    // Report 2
     mouse_report: AbsMouseReport,
+    // Report 3
     consumer_report: ConsumerReport,
 }
 
@@ -37,7 +52,21 @@ impl SynergyHid {
         }
     }
 
-    pub fn key_down(&mut self, key: u16, mask: u16, button: u16, report: &mut [u8]) -> usize {
+    pub fn get_report_descriptor(report_type: ReportType) -> &'static [u8] {
+        match report_type {
+            ReportType::Keyboard => BOOT_KEYBOARD_REPORT_DESCRIPTOR,
+            ReportType::Mouse => ABSOLUTE_WHEEL_MOUSE_REPORT_DESCRIPTOR,
+            ReportType::Consumer => CONSUMER_CONTROL_REPORT_DESCRIPTOR,
+        }
+    }
+
+    pub fn key_down<'a>(
+        &mut self,
+        key: u16,
+        mask: u16,
+        button: u16,
+        report: &'a mut [u8],
+    ) -> (ReportType, &'a [u8]) {
         debug!("Key down {key} {mask} {button}");
         self.server_buttons[button as usize] = key;
         let hid = synergy_to_hid(key);
@@ -45,24 +74,27 @@ impl SynergyHid {
         match hid {
             KeyCode::None => {
                 warn!("Keycode not found");
-                report[0] = 0x01;
-                report[1..9].copy_from_slice(&self.keyboard_report.clear());
-                9
+                report[..8].copy_from_slice(&self.keyboard_report.clear());
+                (ReportType::Keyboard, &report[0..8])
             }
             KeyCode::Key(key) => {
-                report[0] = 0x01;
-                report[1..9].copy_from_slice(&self.keyboard_report.press(key));
-                9
+                report[..8].copy_from_slice(&self.keyboard_report.press(key));
+                (ReportType::Keyboard, &report[0..8])
             }
             KeyCode::Consumer(key) => {
-                report[0] = 0x03;
-                report[1..3].copy_from_slice(&self.consumer_report.press(key));
-                3
+                report[..2].copy_from_slice(&self.consumer_report.press(key));
+                (ReportType::Consumer, &report[0..2])
             }
         }
     }
 
-    pub fn key_up(&mut self, key: u16, mask: u16, button: u16, report: &mut [u8]) -> usize {
+    pub fn key_up<'a>(
+        &mut self,
+        key: u16,
+        mask: u16,
+        button: u16,
+        report: &'a mut [u8],
+    ) -> (ReportType, &'a [u8]) {
         debug!("Key down {key} {mask} {button}");
         let key = self.server_buttons[button as usize];
         let hid = if self.server_buttons[button as usize] != 0 {
@@ -80,32 +112,38 @@ impl SynergyHid {
         match hid {
             KeyCode::None => {
                 warn!("Keycode not found");
-                report[0] = 0x01;
-                report[1..9].copy_from_slice(&self.keyboard_report.clear());
-                9
+                report[..8].copy_from_slice(&self.keyboard_report.clear());
+                (ReportType::Keyboard, &report[0..8])
             }
             KeyCode::Key(key) => {
-                report[0] = 0x01;
-                report[1..9].copy_from_slice(&self.keyboard_report.release(key));
-                9
+                report[..8].copy_from_slice(&self.keyboard_report.release(key));
+                (ReportType::Keyboard, &report[0..8])
             }
             KeyCode::Consumer(_key) => {
-                report[0] = 0x03;
-                report[1..3].copy_from_slice(&self.consumer_report.release());
-                3
+                report[..2].copy_from_slice(&self.consumer_report.release());
+                (ReportType::Consumer, &report[0..2])
             }
         }
     }
 
-    pub fn set_cursor_position(&mut self, x: u16, y: u16, report: &mut [u8]) -> usize {
+    pub fn set_cursor_position<'a>(
+        &mut self,
+        x: u16,
+        y: u16,
+        report: &'a mut [u8],
+    ) -> (ReportType, &'a [u8]) {
         (self.x, self.y) = self.scale_position(x, y);
         let (x, y) = self.scale_position(x, y);
-        report[0] = 0x02;
-        report[1..8].copy_from_slice(&self.mouse_report.move_to(x, y));
-        8
+        report[..7].copy_from_slice(&self.mouse_report.move_to(x, y));
+        (ReportType::Mouse, &report[..7])
     }
 
-    pub fn move_cursor(&mut self, x: i16, y: i16, report: &mut [u8]) -> usize {
+    pub fn move_cursor<'a>(
+        &mut self,
+        x: i16,
+        y: i16,
+        report: &'a mut [u8],
+    ) -> (ReportType, &'a [u8]) {
         self.set_cursor_position(
             (self.x as i32 + x as i32) as u16,
             (self.y as i32 + y as i32) as u16,
@@ -113,27 +151,29 @@ impl SynergyHid {
         )
     }
 
-    pub fn mouse_down(&mut self, button: i8, report: &mut [u8]) -> usize {
-        report[0] = 0x02;
-        report[1..8].copy_from_slice(&self.mouse_report.mouse_down(synergy_mouse_button(button)));
-        8
+    pub fn mouse_down<'a>(&mut self, button: i8, report: &'a mut [u8]) -> (ReportType, &'a [u8]) {
+        report[..7].copy_from_slice(&self.mouse_report.mouse_down(synergy_mouse_button(button)));
+        (ReportType::Mouse, &report[..7])
     }
 
-    pub fn mouse_up(&mut self, button: i8, report: &mut [u8]) -> usize {
-        report[0] = 0x02;
-        report[1..8].copy_from_slice(&self.mouse_report.mouse_up(synergy_mouse_button(button)));
-        8
+    pub fn mouse_up<'a>(&mut self, button: i8, report: &'a mut [u8]) -> (ReportType, &'a [u8]) {
+        report[..7].copy_from_slice(&self.mouse_report.mouse_up(synergy_mouse_button(button)));
+        (ReportType::Mouse, &report[..7])
     }
 
-    pub fn mouse_scroll(&mut self, x: i16, y: i16, report: &mut [u8]) -> usize {
+    pub fn mouse_scroll<'a>(
+        &mut self,
+        x: i16,
+        y: i16,
+        report: &'a mut [u8],
+    ) -> (ReportType, &'a [u8]) {
         let x = x as i8;
         let mut y = y as i8;
         if self.flip_mouse_wheel {
             y = -y;
         }
-        report[0] = 0x02;
-        report[1..8].copy_from_slice(&self.mouse_report.mouse_wheel(y, x));
-        8
+        report[..7].copy_from_slice(&self.mouse_report.mouse_wheel(y, x));
+        (ReportType::Mouse, &report[..7])
     }
 
     fn scale_position(&self, x: u16, y: u16) -> (u16, u16) {
@@ -147,28 +187,51 @@ impl SynergyHid {
 
 #[cfg(test)]
 mod test {
-    use crate::keycodes::{HID_KEY_A, HID_KEY_B};
+    use crate::{
+        keycodes::{HID_KEY_A, HID_KEY_B},
+        ReportType,
+    };
 
     #[test]
     fn test_key() {
         let mut hid = super::SynergyHid::new(1920, 1080, false);
         let mut report = [0; 9];
-        let sz = hid.key_down(0x0000, 0x0000, 0x0000, &mut report);
-        assert_eq!(sz, 9);
-        assert_eq!(report, [0x01, 0, 0, 0, 0, 0, 0, 0, 0]);
-        hid.key_down('A' as u16, 0x0000, 0x0000, &mut report);
-        assert_eq!(report, [0x01, 0, 0, HID_KEY_A, 0, 0, 0, 0, 0]);
-        hid.key_down('B' as u16, 0x0000, 0x0000, &mut report);
-        assert_eq!(report, [0x01, 0, 0, HID_KEY_A, HID_KEY_B, 0, 0, 0, 0]);
-        hid.key_up('B' as u16, 0x0000, 0x0000, &mut report);
-        assert_eq!(report, [0x01, 0, 0, HID_KEY_A, 0, 0, 0, 0, 0]);
+        assert_eq!(
+            hid.key_down(0x0000, 0x0000, 0x0000, &mut report),
+            (ReportType::Keyboard, [0, 0, 0, 0, 0, 0, 0, 0].as_ref())
+        );
+        assert_eq!(
+            hid.key_down('A' as u16, 0x0000, 0x0000, &mut report),
+            (
+                ReportType::Keyboard,
+                [0, 0, HID_KEY_A, 0, 0, 0, 0, 0].as_ref()
+            )
+        );
+
+        assert_eq!(
+            hid.key_down('B' as u16, 0x0000, 0x0000, &mut report),
+            (
+                ReportType::Keyboard,
+                [0, 0, HID_KEY_A, HID_KEY_B, 0, 0, 0, 0].as_ref()
+            )
+        );
+        assert_eq!(
+            hid.key_up('B' as u16, 0x0000, 0x0000, &mut report),
+            (
+                ReportType::Keyboard,
+                [0, 0, HID_KEY_A, 0, 0, 0, 0, 0].as_ref()
+            )
+        );
         // Wrong key up, report is cleared
-        hid.key_up('C' as u16, 0x0000, 0x0000, &mut report);
-        assert_eq!(report, [0x01, 0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(
+            hid.key_up('C' as u16, 0x0000, 0x0000, &mut report),
+            (ReportType::Keyboard, [0, 0, 0, 0, 0, 0, 0, 0].as_ref())
+        );
 
         // kKeyAudioMute(0xE0AD) -> HID_USAGE_CONSUMER_MUTE(0x00E2)
-        let sz = hid.key_down(0xE0AD, 0x0000, 1, &mut report);
-        assert_eq!(sz, 3);
-        assert_eq!(report[0..sz], [0x03, 0x00, 0xE2]);
+        assert_eq!(
+            hid.key_down(0xE0AD, 0x0000, 1, &mut report),
+            (ReportType::Consumer, [0x00, 0xE2].as_ref())
+        );
     }
 }
