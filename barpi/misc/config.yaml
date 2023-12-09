@@ -1,0 +1,5 @@
+server: "host:24800"
+screen_name: "SCREEN1"
+screen_width: 1920
+screen_height: 1080
+flip_mouse_wheel: false
