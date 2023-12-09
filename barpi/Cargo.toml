@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 usb-gadget = { version = "0.6", features = ["tokio"] }
 barrier-client = { path = "../barrier-client" }
+synergy-hid = { path = "../synergy-hid" }

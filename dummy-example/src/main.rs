@@ -1,4 +1,4 @@
-use barrier_client::{self, start, Actuator};
+use barrier_client::{self, start, Actuator, ClipboardData};
 use env_logger::Env;
 use log::info;
 
@@ -83,6 +83,33 @@ impl Actuator for DummyActuator {
 
     fn leave(&mut self) {
         info!("Leave")
+    }
+
+    fn set_options(&mut self, opts: std::collections::HashMap<String, u32>) {
+        info!("Set options {:#?}", opts)
+    }
+
+    fn reset_options(&mut self) {
+        info!("Reset options")
+    }
+
+    fn set_clipboard(&mut self, data: ClipboardData) {
+        info!(
+            "Clipboard text:{}",
+            data.text()
+                .map(|s| s.as_str().chars().take(20).collect::<String>() + "...")
+                .unwrap_or(String::from("<None>"))
+        );
+        info!(
+            "Clipboard html:{}",
+            data.html()
+                .map(|s| s.as_str().chars().take(20).collect::<String>() + "...")
+                .unwrap_or(String::from("<None>")),
+        );
+        info!(
+            "Clipboard bitmap:{}",
+            data.bitmap().map(|_| "yes").unwrap_or("no")
+        );
     }
 }
 

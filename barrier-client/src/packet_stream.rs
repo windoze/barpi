@@ -114,11 +114,15 @@ impl<S: PacketReader + PacketWriter> PacketStream<S> {
                 let mark = chunk.read_u8().await?;
                 limit -= 1;
                 // chunk.read_to_end(&mut buf).await?;
-                if limit > 0 {
-                    let mut buf = Vec::with_capacity(limit);
+                let buf = if limit > 0 {
+                    let mut buf = vec![0; limit];
                     chunk.read_exact(&mut buf).await?;
-                }
+                    buf
+                } else {
+                    vec![]
+                };
                 limit = 0;
+                debug!("Chunk: {id}, {mark} {}", buf.len());
 
                 // mark 1 is the total length string in ASCII
                 // mark 2 is the actual data and is split into chunks
