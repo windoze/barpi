@@ -31,10 +31,10 @@ impl AbsMouseReport {
         let pan = pan.into().unwrap_or(0);
         let mut report = [0u8; 7];
         report[0] = self.button;
-        report[1] = (self.x >> 8) as u8;
-        report[2] = (self.x & 0xff) as u8;
-        report[3] = (self.y >> 8) as u8;
-        report[4] = (self.y & 0xff) as u8;
+        report[1] = (self.x & 0xff) as u8;
+        report[2] = (self.x >> 8) as u8;
+        report[3] = (self.y & 0xff) as u8;
+        report[4] = (self.y >> 8) as u8;
         report[5] = scroll as u8;
         report[6] = pan as u8;
         report
@@ -149,8 +149,8 @@ impl ConsumerReport {
 
     fn send(&self) -> [u8; 2] {
         let mut report = [0u8; 2];
-        report[0] = (self.code >> 8) as u8;
-        report[1] = (self.code & 0xff) as u8;
+        report[0] = (self.code & 0xff) as u8;
+        report[1] = (self.code >> 8) as u8;
         report
     }
 }

@@ -22,8 +22,6 @@ pub enum ReportType {
 
 #[derive(Debug)]
 pub struct SynergyHid {
-    width: u16,
-    height: u16,
     flip_mouse_wheel: bool,
     x: u16,
     y: u16,
@@ -38,10 +36,8 @@ pub struct SynergyHid {
 }
 
 impl SynergyHid {
-    pub fn new(width: u16, height: u16, flip_mouse_wheel: bool) -> Self {
+    pub fn new(flip_mouse_wheel: bool) -> Self {
         Self {
-            width,
-            height,
             flip_mouse_wheel,
             x: 0,
             y: 0,
@@ -52,11 +48,11 @@ impl SynergyHid {
         }
     }
 
-    pub fn get_report_descriptor(report_type: ReportType) -> &'static [u8] {
+    pub fn get_report_descriptor(report_type: ReportType) -> (u8, &'static [u8]) {
         match report_type {
-            ReportType::Keyboard => BOOT_KEYBOARD_REPORT_DESCRIPTOR,
-            ReportType::Mouse => ABSOLUTE_WHEEL_MOUSE_REPORT_DESCRIPTOR,
-            ReportType::Consumer => CONSUMER_CONTROL_REPORT_DESCRIPTOR,
+            ReportType::Keyboard => (8, BOOT_KEYBOARD_REPORT_DESCRIPTOR),
+            ReportType::Mouse => (7, ABSOLUTE_WHEEL_MOUSE_REPORT_DESCRIPTOR),
+            ReportType::Consumer => (2, CONSUMER_CONTROL_REPORT_DESCRIPTOR),
         }
     }
 
@@ -132,8 +128,7 @@ impl SynergyHid {
         y: u16,
         report: &'a mut [u8],
     ) -> (ReportType, &'a [u8]) {
-        (self.x, self.y) = self.scale_position(x, y);
-        let (x, y) = self.scale_position(x, y);
+        (self.x, self.y) = (x, y);
         report[..7].copy_from_slice(&self.mouse_report.move_to(x, y));
         (ReportType::Mouse, &report[..7])
     }
@@ -175,14 +170,6 @@ impl SynergyHid {
         report[..7].copy_from_slice(&self.mouse_report.mouse_wheel(y, x));
         (ReportType::Mouse, &report[..7])
     }
-
-    fn scale_position(&self, x: u16, y: u16) -> (u16, u16) {
-        // NOTE: Some errors could be introduced without `ceil`, but shouldn't be a big deal.
-        (
-            ((x as f32) * (0x7fff as f32 / (self.width as f32))).ceil() as u16,
-            ((y as f32) * (0x7fff as f32 / (self.height as f32))).ceil() as u16,
-        )
-    }
 }
 
 #[cfg(test)]
@@ -194,7 +181,7 @@ mod test {
 
     #[test]
     fn test_key() {
-        let mut hid = super::SynergyHid::new(1920, 1080, false);
+        let mut hid = super::SynergyHid::new(false);
         let mut report = [0; 9];
         assert_eq!(
             hid.key_down(0x0000, 0x0000, 0x0000, &mut report),
