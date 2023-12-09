@@ -46,10 +46,7 @@ pub trait Actuator {
 }
 
 #[cfg(feature = "async-actuator")]
-use async_trait::async_trait;
-
-#[cfg(feature = "async-actuator")]
-#[async_trait]
+#[async_trait::async_trait]
 pub trait AsyncActuator {
     async fn connected(&mut self);
 
@@ -131,14 +128,14 @@ pub enum ActuatorMessage {
         mask: u16,
         button: u16,
     },
+    Enter,
+    Leave,
     #[cfg(feature = "barrier-options")]
     SetOptions {
         opts: std::collections::HashMap<String, u32>,
     },
     #[cfg(feature = "barrier-options")]
     ResetOptions,
-    Enter,
-    Leave,
     #[cfg(feature = "clipboard")]
     SetClipboardText {
         data: String,

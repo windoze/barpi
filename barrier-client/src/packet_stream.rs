@@ -1,7 +1,6 @@
-use async_trait::async_trait;
 #[cfg(feature = "clipboard")]
 use log::{debug, warn};
-use tokio::io::{AsyncRead, AsyncReadExt, Take};
+use tokio::io::{AsyncRead, AsyncReadExt};
 
 #[cfg(feature = "clipboard")]
 use crate::{clipboard::parse_clipboard, ClipboardStage};
@@ -9,68 +8,40 @@ use crate::{clipboard::parse_clipboard, ClipboardStage};
 use super::{Packet, PacketError, PacketReader, PacketWriter};
 
 pub struct PacketStream<S: PacketReader + PacketWriter> {
-    stream: Option<S>,
+    stream: S,
 }
-
-#[async_trait]
-trait DiscardAll: AsyncRead + Send + Unpin {
-    async fn discard_all(&mut self) -> Result<(), PacketError> {
-        let mut buf = [0; 1024];
-        while self.read(&mut buf).await? > 0 {}
-        Ok(())
-    }
-}
-
-impl<S: AsyncRead + Send + Unpin> DiscardAll for S {}
 
 impl<S: PacketReader + PacketWriter> PacketStream<S> {
     pub fn new(stream: S) -> Self {
-        Self {
-            stream: Some(stream),
-        }
+        Self { stream }
     }
 
     pub async fn read(
         &mut self,
         #[cfg(feature = "clipboard")] clipboard_stage: &mut ClipboardStage,
     ) -> Result<Packet, PacketError> {
-        let size = self.stream.as_mut().unwrap().read_packet_size().await?;
+        let size = self.stream.read_packet_size().await?;
         if size < 4 {
             let mut buf = [0; 4];
-            self.stream
-                .as_mut()
-                .unwrap()
-                .read_exact(&mut buf[0..size as usize])
-                .await?;
+            self.stream.read_exact(&mut buf[0..size as usize]).await?;
             return Err(PacketError::PacketTooSmall);
         }
-        let mut chunk = self.stream.take().unwrap().take(size as u64);
-        match Self::do_read(
-            &mut chunk,
+        Self::do_read(
+            &mut self.stream,
+            size as usize,
             #[cfg(feature = "clipboard")]
             clipboard_stage,
-            #[cfg(feature = "clipboard")]
-            size,
         )
         .await
-        {
-            Ok(packet) => {
-                self.stream = Some(chunk.into_inner());
-                Ok(packet)
-            }
-            Err(e) => {
-                self.stream = Some(chunk.into_inner());
-                Err(e)
-            }
-        }
     }
 
     async fn do_read<T: AsyncRead + Send + Unpin>(
-        chunk: &mut Take<T>,
+        chunk: &mut T,
+        mut limit: usize,
         #[cfg(feature = "clipboard")] clipboard_stage: &mut ClipboardStage,
-        #[cfg(feature = "clipboard")] size: u32,
     ) -> Result<Packet, PacketError> {
         let code: [u8; 4] = chunk.read_bytes_fixed().await?;
+        limit -= 4;
 
         let packet = match code.as_ref() {
             b"QINF" => Packet::QueryInfo,
@@ -81,12 +52,16 @@ impl<S: PacketReader + PacketWriter> PacketStream<S> {
             #[cfg(feature = "barrier-options")]
             b"DSOP" => {
                 let num_items = chunk.read_u32().await?;
+                limit -= 4;
                 let num_opts = num_items / 2;
-                let mut options: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
+                let mut options: std::collections::HashMap<String, u32> =
+                    std::collections::HashMap::new();
                 // Currently only HBRT(Heartbeat interval) is supported
                 for _ in 0..num_opts {
                     let opt: [u8; 4] = chunk.read_bytes_fixed().await?;
+                    limit -= 4;
                     let val = chunk.read_u32().await?;
+                    limit -= 4;
                     options.insert(String::from_utf8_lossy(&opt).into_owned(), val);
                 }
                 Packet::SetDeviceOptions(options)
@@ -94,19 +69,27 @@ impl<S: PacketReader + PacketWriter> PacketStream<S> {
             b"EUNK" => Packet::ErrorUnknownDevice,
             b"DMMV" => {
                 let x = chunk.read_u16().await?;
+                limit -= 2;
                 let y = chunk.read_u16().await?;
+                limit -= 2;
                 Packet::MouseMoveAbs { x, y }
             }
             b"DMRM" => {
                 let x = chunk.read_i16().await?;
+                limit -= 2;
                 let y = chunk.read_i16().await?;
+                limit -= 2;
                 Packet::MouseMove { x, y }
             }
             b"CINN" => {
                 let x = chunk.read_u16().await?;
+                limit -= 2;
                 let y = chunk.read_u16().await?;
+                limit -= 2;
                 let seq_num = chunk.read_u32().await?;
+                limit -= 4;
                 let mask = chunk.read_u16().await?;
+                limit -= 2;
                 Packet::CursorEnter {
                     x,
                     y,
@@ -117,17 +100,25 @@ impl<S: PacketReader + PacketWriter> PacketStream<S> {
             b"COUT" => Packet::CursorLeave,
             b"CCLP" => {
                 let id = chunk.read_u8().await?;
+                limit -= 1;
                 let seq_num = chunk.read_u32().await?;
+                limit -= 4;
                 Packet::GrabClipboard { id, seq_num }
             }
             #[cfg(feature = "clipboard")]
             b"DCLP" => {
                 let id = chunk.read_u8().await?;
+                limit -= 1;
                 let _seq_num = chunk.read_u32().await?;
+                limit -= 4;
                 let mark = chunk.read_u8().await?;
-                let mut buf = vec![];
-                chunk.read_to_end(&mut buf).await?;
-                debug!("DCLP chunk, size: {}, mark: {}", size, mark);
+                limit -= 1;
+                // chunk.read_to_end(&mut buf).await?;
+                if limit > 0 {
+                    let mut buf = Vec::with_capacity(limit);
+                    chunk.read_exact(&mut buf).await?;
+                }
+                limit = 0;
 
                 // mark 1 is the total length string in ASCII
                 // mark 2 is the actual data and is split into chunks
@@ -234,29 +225,41 @@ impl<S: PacketReader + PacketWriter> PacketStream<S> {
 
             b"DMUP" => {
                 let id = chunk.read_i8().await?;
+                limit -= 1;
                 Packet::MouseUp { id }
             }
             b"DMDN" => {
                 let id = chunk.read_i8().await?;
+                limit -= 1;
                 Packet::MouseDown { id }
             }
             b"DKUP" => {
                 let id = chunk.read_u16().await?;
+                limit -= 2;
                 let mask = chunk.read_u16().await?;
+                limit -= 2;
                 let button = chunk.read_u16().await?;
+                limit -= 2;
                 Packet::KeyUp { id, mask, button }
             }
             b"DKDN" => {
                 let id = chunk.read_u16().await?;
+                limit -= 2;
                 let mask = chunk.read_u16().await?;
+                limit -= 2;
                 let button = chunk.read_u16().await?;
+                limit -= 2;
                 Packet::KeyDown { id, mask, button }
             }
             b"DKRP" => {
                 let id = chunk.read_u16().await?;
+                limit -= 2;
                 let mask = chunk.read_u16().await?;
+                limit -= 2;
                 let count = chunk.read_u16().await?;
+                limit -= 2;
                 let button = chunk.read_u16().await?;
+                limit -= 2;
                 Packet::KeyRepeat {
                     id,
                     mask,
@@ -266,29 +269,21 @@ impl<S: PacketReader + PacketWriter> PacketStream<S> {
             }
             b"DMWM" => {
                 let x_delta = chunk.read_i16().await?;
+                limit -= 2;
                 let y_delta = chunk.read_i16().await?;
+                limit -= 2;
                 Packet::MouseWheel { x_delta, y_delta }
             }
             _ => Packet::Unknown(code),
         };
 
         // Discard the rest of the packet
-        if chunk.limit() > 0 {
-            debug!(
-                "Discarding {} bytes, code: {}",
-                chunk.limit(),
-                std::str::from_utf8(&code).unwrap_or("????"),
-            );
-        }
-        chunk.discard_all().await?;
+        chunk.discard_exact(limit).await?;
 
         Ok(packet)
     }
 
     pub async fn write(&mut self, packet: Packet) -> Result<(), PacketError> {
-        packet
-            .write_wire(&mut self.stream.as_mut().unwrap())
-            .await?;
-        Ok(())
+        packet.write_wire(&mut self.stream).await
     }
 }

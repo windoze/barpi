@@ -137,7 +137,7 @@ pub async fn start<A: Actuator, Addr: ToSocketAddrs>(
                 // Server only packets
             }
             Packet::Unknown(cmd) => {
-                debug!("Unknown packet: {:?}", cmd);
+                debug!("Unknown packet: {}", core::str::from_utf8(&cmd).unwrap_or("????") );
             }
         }
     }
@@ -279,7 +279,7 @@ pub async fn start_async<A: AsyncActuator + Send + Unpin, Addr: ToSocketAddrs>(
                 // Server only packets
             }
             Packet::Unknown(cmd) => {
-                debug!("Unknown packet: {:?}", cmd);
+                debug!("Unknown packet: {}", core::str::from_utf8(&cmd).unwrap_or("????") );
             }
         }
     }
