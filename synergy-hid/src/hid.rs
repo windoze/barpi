@@ -26,6 +26,11 @@ impl AbsMouseReport {
         self.send(scroll, pan)
     }
 
+    pub fn clear(&mut self) -> [u8; 7] {
+        self.button = 0;
+        self.send(None, None)
+    }
+
     fn send<S: Into<Option<i8>>, P: Into<Option<i8>>>(&self, scroll: S, pan: P) -> [u8; 7] {
         let scroll = scroll.into().unwrap_or(0);
         let pan = pan.into().unwrap_or(0);
@@ -143,6 +148,11 @@ impl ConsumerReport {
     }
 
     pub fn release(&mut self) -> [u8; 2] {
+        self.code = 0;
+        self.send()
+    }
+
+    pub fn clear(&mut self) -> [u8; 2] {
         self.code = 0;
         self.send()
     }

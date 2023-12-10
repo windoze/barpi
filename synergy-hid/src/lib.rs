@@ -173,6 +173,23 @@ impl SynergyHid {
         report[..7].copy_from_slice(&self.mouse_report.mouse_wheel(y, x));
         (ReportType::Mouse, &report[..7])
     }
+
+    pub fn clear<'a>(&mut self, report_type: ReportType, report: &'a mut [u8]) -> (ReportType, &'a [u8]) {
+        match report_type {
+            ReportType::Keyboard => {
+                report[..8].copy_from_slice(&self.keyboard_report.clear());
+                (ReportType::Keyboard, &report[..8])
+            }
+            ReportType::Mouse => {
+                report[..7].copy_from_slice(&self.mouse_report.clear());
+                (ReportType::Mouse, &report[..7])
+            }
+            ReportType::Consumer => {
+                report[..2].copy_from_slice(&self.consumer_report.clear());
+                (ReportType::Consumer, &report[..2])
+            }
+        }
+    }
 }
 
 #[cfg(test)]

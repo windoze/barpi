@@ -1,7 +1,7 @@
 use std::{fs::File, io::Write};
 
 use barrier_client::{Actuator, ClipboardData};
-use log::{info, debug, error};
+use log::{debug, error, info};
 use synergy_hid::{ReportType, SynergyHid};
 use tokio_util::sync::CancellationToken;
 pub struct BarpiActuator {
@@ -35,7 +35,7 @@ impl BarpiActuator {
             keyboard_file,
             mouse_file,
             consumer_file,
-            token
+            token,
         }
     }
 
@@ -137,7 +137,15 @@ impl Actuator for BarpiActuator {
     }
 
     fn leave(&mut self) {
-        info!("Leave")
+        info!("Leave");
+        debug!("Clear HID reports");
+        let report = &mut [0; 9];
+        let ret = self.hid.clear(ReportType::Keyboard, report);
+        self.write_report(ret);
+        let ret = self.hid.clear(ReportType::Mouse, report);
+        self.write_report(ret);
+        let ret = self.hid.clear(ReportType::Consumer, report);
+        self.write_report(ret);
     }
 
     fn set_options(&mut self, opts: std::collections::HashMap<String, u32>) {

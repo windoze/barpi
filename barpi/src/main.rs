@@ -83,9 +83,7 @@ pub fn reg(funcs: Vec<Handle>, cfg: &BarpiConfig) -> RegGadget {
     if cfg.max_power_ma > 500 {
         warn!("USB max power is limited to 500mA");
     }
-    config
-        .set_max_power_ma(min(500, cfg.max_power_ma))
-        .unwrap();
+    config.set_max_power_ma(min(500, cfg.max_power_ma)).unwrap();
     config.self_powered = cfg.self_powered;
     // We can support remote wakeup only if the device is self powered
     config.remote_wakeup = cfg.self_powered;
@@ -101,9 +99,6 @@ pub fn reg(funcs: Vec<Handle>, cfg: &BarpiConfig) -> RegGadget {
     .with_config(config)
     .bind(&udc)
     .expect("cannot bind to UDC");
-
-    assert!(reg.is_attached());
-    assert_eq!(reg.udc().unwrap().unwrap(), udc.name());
 
     println!(
         "bound USB gadget {} at {} to {}",
@@ -165,7 +160,7 @@ fn get_hid_func(report_type: ReportType) -> (Hid, Handle) {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
     let mut args = Args::parse();
@@ -192,31 +187,31 @@ async fn main() {
 
     debug!(
         "HID keyboard device {:?} at {}",
-        keyboard.device().unwrap(),
+        keyboard.device()?,
         keyboard.status().path().unwrap().display()
     );
-    let keyboard_path = get_dev_for_hid(&keyboard).unwrap();
+    let keyboard_path = get_dev_for_hid(&keyboard)?;
     debug!("Dev file at {:?}", keyboard_path);
 
     debug!(
         "HID mouse device {:?} at {}",
-        mouse.device().unwrap(),
+        mouse.device()?,
         mouse.status().path().unwrap().display()
     );
-    let mouse_path = get_dev_for_hid(&mouse).unwrap();
+    let mouse_path = get_dev_for_hid(&mouse)?;
     debug!("Dev file at {:?}", mouse_path);
 
     debug!(
         "HID consumer control device {:?} at {}",
-        consumer.device().unwrap(),
+        consumer.device()?,
         consumer.status().path().unwrap().display()
     );
-    let consumer_path = get_dev_for_hid(&consumer).unwrap();
+    let consumer_path = get_dev_for_hid(&consumer)?;
     debug!("Dev file at {:?}", consumer_path);
 
-    let fk = std::fs::File::create(keyboard_path).unwrap();
-    let fm = std::fs::File::create(mouse_path).unwrap();
-    let fc = std::fs::File::create(consumer_path).unwrap();
+    let fk = std::fs::File::create(keyboard_path)?;
+    let fm = std::fs::File::create(mouse_path)?;
+    let fc = std::fs::File::create(consumer_path)?;
 
     let token = CancellationToken::new();
 
@@ -236,8 +231,11 @@ async fn main() {
             match start(&cfg.server, &cfg.screen_name, &mut client).await {
                 Ok(_) => {}
                 Err(e) => {
-                    warn!("Error: {:?}", e);
-                    sleep(Duration::from_secs(1));
+                    warn!(
+                        "Disconnected from the server, error: {:?}, reconnecting in 1 second...",
+                        e
+                    );
+                    tokio::time::sleep(Duration::from_secs(1)).await;
                 }
             }
         }
@@ -271,5 +269,6 @@ async fn main() {
             warn!("Error: {:?}", e);
         }
     }
-    unreg(reg).unwrap();
+    unreg(reg)?;
+    Ok(())
 }
