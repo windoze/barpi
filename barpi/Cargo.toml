@@ -8,7 +8,8 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 log = "0.4"
-usb-gadget = { version = "0.6", features = ["tokio"] }
+# usb-gadget = { version = "0.6", features = ["tokio"] }
+usb-gadget = { git = "https://github.com/windoze/usb-gadget" }
 barrier-client = { path = "../barrier-client" }
 synergy-hid = { path = "../synergy-hid" }
 glob = "0.3.1"
@@ -19,3 +20,4 @@ clap = { version = "4", features = ["derive", "env"] }
 clap-serde-derive = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
+libc = "0.2"

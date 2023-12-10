@@ -4,7 +4,7 @@ use barrier_client::{Actuator, ClipboardData};
 use log::{info, debug, error};
 use synergy_hid::{ReportType, SynergyHid};
 use tokio_util::sync::CancellationToken;
-pub struct DummyActuator {
+pub struct BarpiActuator {
     width: u16,
     height: u16,
     x: u16,
@@ -16,7 +16,7 @@ pub struct DummyActuator {
     token: CancellationToken,
 }
 
-impl DummyActuator {
+impl BarpiActuator {
     pub fn new(
         width: u16,
         height: u16,
@@ -62,7 +62,7 @@ impl DummyActuator {
     }
 }
 
-impl Actuator for DummyActuator {
+impl Actuator for BarpiActuator {
     fn connected(&mut self) {
         info!("Connected");
     }

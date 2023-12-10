@@ -1,6 +1,6 @@
 use std::{
-    env, fs::File, io::BufReader, os::linux::fs::MetadataExt, path::PathBuf, thread::sleep,
-    time::Duration,
+    cmp::min, env, fs::File, io::BufReader, os::linux::fs::MetadataExt, path::PathBuf,
+    thread::sleep, time::Duration,
 };
 
 use barrier_client::start;
@@ -55,6 +55,7 @@ pub struct BarpiConfig {
     #[arg(short = 'f', long, default_value = "false")]
     pub flip_mouse_wheel: bool,
 
+    // USB ids
     #[arg(hide = true, long, default_value = "3338")]
     pub usb_vid: u16,
     #[arg(hide = true, long, default_value = "49374")]
@@ -65,12 +66,29 @@ pub struct BarpiConfig {
     pub usb_product: String,
     #[arg(hide = true, long, default_value = "0000000000000001")]
     pub usb_serial: String,
+
+    // Power supply related settings
+    /// RPi Zero W requires around 200mA without accessories, and Zero 2W around 250mA
+    #[arg(hide = true, long, default_value = "500")]
+    pub max_power_ma: u16,
+    /// Set to true if the device has external power, and the USB remote wakeup is enabled when this is true
+    #[arg(hide = true, long, default_value = "false")]
+    pub self_powered: bool,
 }
 
 pub fn reg(funcs: Vec<Handle>, cfg: &BarpiConfig) -> RegGadget {
     let udc = default_udc().expect("cannot get UDC");
 
     let mut config = Config::new("config");
+    if cfg.max_power_ma > 500 {
+        warn!("USB max power is limited to 500mA");
+    }
+    config
+        .set_max_power_ma(min(500, cfg.max_power_ma))
+        .unwrap();
+    config.self_powered = cfg.self_powered;
+    // We can support remote wakeup only if the device is self powered
+    config.remote_wakeup = cfg.self_powered;
     for func in funcs {
         config = config.with_function(func);
     }
@@ -110,14 +128,14 @@ pub fn unreg(mut reg: RegGadget) -> std::io::Result<bool> {
     }
 }
 
-pub fn get_dev(prefix: &str, major: u8, minor: u8) -> anyhow::Result<PathBuf> {
+pub fn get_dev(prefix: &str, major: libc::c_uint, minor: libc::c_uint) -> anyhow::Result<PathBuf> {
     for entry in glob::glob(&format!("/dev/{prefix}*")).expect("Failed to read glob pattern") {
         match entry {
             Ok(path) => {
                 let dev = std::fs::metadata(&path)
                     .expect("Failed to read metadata")
                     .st_rdev();
-                if dev == (major as u64) << 8 | minor as u64 {
+                if dev == libc::makedev(major, minor) {
                     return Ok(path);
                 }
             }
@@ -203,7 +221,7 @@ async fn main() {
     let token = CancellationToken::new();
 
     let cloned_token: CancellationToken = token.clone();
-    let mut client = client::DummyActuator::new(
+    let mut client = client::BarpiActuator::new(
         cfg.screen_width,
         cfg.screen_width,
         cfg.flip_mouse_wheel,
