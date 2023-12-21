@@ -4,8 +4,9 @@ resolver = "2"
 
 members = [
     "barrier-client",
-    "barpi",
+    # "barpi",
     "synergy-hid",
     "dummy-example",
+    "serbar",
 ]
 

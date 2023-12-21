@@ -4,45 +4,68 @@ use serde::{Deserialize, Serialize};
 use crate::ClipboardData;
 
 pub trait Actuator {
-    fn connected(&mut self);
+    fn connected(&mut self) -> impl std::future::Future<Output = ()> + Send;
 
-    fn disconnected(&mut self);
+    fn disconnected(&mut self) -> impl std::future::Future<Output = ()> + Send;
 
-    fn get_screen_size(&self) -> (u16, u16);
+    fn get_screen_size(&self) -> impl std::future::Future<Output = (u16, u16)> + Send;
 
-    fn get_cursor_position(&self) -> (u16, u16);
+    fn get_cursor_position(&self) -> impl std::future::Future<Output = (u16, u16)> + Send;
 
-    fn set_cursor_position(&mut self, x: u16, y: u16);
+    fn set_cursor_position(
+        &mut self,
+        x: u16,
+        y: u16,
+    ) -> impl std::future::Future<Output = ()> + Send;
 
-    fn move_cursor(&mut self, x: i16, y: i16) {
-        let (cx, cy) = self.get_cursor_position();
-        self.set_cursor_position((cx as i32 + x as i32) as u16, (cy as i32 + y as i32) as u16);
-    }
+    fn move_cursor(&mut self, x: i16, y: i16) -> impl std::future::Future<Output = ()> + Send;
 
-    fn mouse_down(&mut self, button: i8);
+    fn mouse_down(&mut self, button: i8) -> impl std::future::Future<Output = ()> + Send;
 
-    fn mouse_up(&mut self, button: i8);
+    fn mouse_up(&mut self, button: i8) -> impl std::future::Future<Output = ()> + Send;
 
-    fn mouse_wheel(&mut self, x: i16, y: i16);
+    fn mouse_wheel(&mut self, x: i16, y: i16) -> impl std::future::Future<Output = ()> + Send;
 
-    fn key_down(&mut self, key: u16, mask: u16, button: u16);
+    fn key_down(
+        &mut self,
+        key: u16,
+        mask: u16,
+        button: u16,
+    ) -> impl std::future::Future<Output = ()> + Send;
 
-    fn key_repeat(&mut self, key: u16, mask: u16, button: u16, count: u16);
+    fn key_repeat(
+        &mut self,
+        key: u16,
+        mask: u16,
+        button: u16,
+        count: u16,
+    ) -> impl std::future::Future<Output = ()> + Send;
 
-    fn key_up(&mut self, key: u16, mask: u16, button: u16);
+    fn key_up(
+        &mut self,
+        key: u16,
+        mask: u16,
+        button: u16,
+    ) -> impl std::future::Future<Output = ()> + Send;
 
     #[cfg(feature = "barrier-options")]
-    fn set_options(&mut self, opts: std::collections::HashMap<String, u32>);
+    fn set_options(
+        &mut self,
+        opts: std::collections::HashMap<String, u32>,
+    ) -> impl std::future::Future<Output = ()> + Send;
 
     #[cfg(feature = "barrier-options")]
-    fn reset_options(&mut self);
+    fn reset_options(&mut self) -> impl std::future::Future<Output = ()> + Send;
 
-    fn enter(&mut self);
+    fn enter(&mut self) -> impl std::future::Future<Output = ()> + Send;
 
-    fn leave(&mut self);
+    fn leave(&mut self) -> impl std::future::Future<Output = ()> + Send;
 
     #[cfg(feature = "clipboard")]
-    fn set_clipboard(&mut self, data: ClipboardData);
+    fn set_clipboard(
+        &mut self,
+        data: ClipboardData,
+    ) -> impl std::future::Future<Output = ()> + Send;
 }
 
 #[cfg(feature = "async-actuator")]
@@ -77,7 +100,7 @@ pub trait AsyncActuator {
     async fn key_up(&mut self, key: u16, mask: u16, button: u16);
 
     #[cfg(feature = "barrier-options")]
-    async fn set_options(&mut self, opts: std::collections::HashMap<String,u32>);
+    async fn set_options(&mut self, opts: std::collections::HashMap<String, u32>);
 
     #[cfg(feature = "barrier-options")]
     async fn reset_options(&mut self);

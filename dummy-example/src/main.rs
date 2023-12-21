@@ -13,23 +13,23 @@ struct DummyActuator {
 }
 
 impl Actuator for DummyActuator {
-    fn connected(&mut self) {
+    async fn connected(&mut self) {
         info!("Connected");
     }
 
-    fn disconnected(&mut self) {
+    async fn disconnected(&mut self) {
         info!("Disconnected");
     }
 
-    fn get_screen_size(&self) -> (u16, u16) {
+    async fn get_screen_size(&self) -> (u16, u16) {
         (self.width, self.height)
     }
 
-    fn get_cursor_position(&self) -> (u16, u16) {
+    async fn get_cursor_position(&self) -> (u16, u16) {
         (self.x, self.y)
     }
 
-    fn set_cursor_position(&mut self, x: u16, y: u16) {
+    async fn set_cursor_position(&mut self, x: u16, y: u16) {
         self.x = x;
         self.y = y;
         let report = &mut [0; 9];
@@ -37,63 +37,63 @@ impl Actuator for DummyActuator {
         info!("Set cursor position to {x} {y}, HID report: {:?}", ret);
     }
 
-    fn move_cursor(&mut self, x: i16, y: i16) {
+    async fn move_cursor(&mut self, x: i16, y: i16) {
         self.x = (self.x as i32 + x as i32) as u16;
         self.y = (self.y as i32 + y as i32) as u16;
-        self.set_cursor_position(self.x, self.y);
+        self.set_cursor_position(self.x, self.y).await;
     }
 
-    fn mouse_down(&mut self, button: i8) {
+    async fn mouse_down(&mut self, button: i8) {
         let report = &mut [0; 9];
         let ret = self.hid.mouse_down(button, report);
         info!("Mouse button {button} down, HID report: {:?}", ret);
     }
 
-    fn mouse_up(&mut self, button: i8) {
+    async fn mouse_up(&mut self, button: i8) {
         let report = &mut [0; 9];
         let ret = self.hid.mouse_up(button, report);
         info!("Mouse button {button} up, HID report: {:?}", ret);
     }
 
-    fn mouse_wheel(&mut self, x: i16, y: i16) {
+    async fn mouse_wheel(&mut self, x: i16, y: i16) {
         let report = &mut [0; 9];
         let ret = self.hid.mouse_scroll(x, y, report);
         info!("Mouse wheel {x} {y}, HID report: {:?}", ret);
     }
 
-    fn key_down(&mut self, key: u16, mask: u16, button: u16) {
+    async fn key_down(&mut self, key: u16, mask: u16, button: u16) {
         let report = &mut [0; 9];
         let ret = self.hid.key_down(key, mask, button, report);
         info!("Key down {key} {mask} {button}, HID report: {:?}", ret);
     }
 
-    fn key_repeat(&mut self, key: u16, mask: u16, button: u16, count: u16) {
+    async fn key_repeat(&mut self, key: u16, mask: u16, button: u16, count: u16) {
         info!("Key repeat {key} {mask} {button} {count}")
     }
 
-    fn key_up(&mut self, key: u16, mask: u16, button: u16) {
+    async fn key_up(&mut self, key: u16, mask: u16, button: u16) {
         let report = &mut [0; 9];
         let ret = self.hid.key_up(key, mask, button, report);
         info!("Key up {key} {mask} {button}, HID report: {:?}", ret);
     }
 
-    fn enter(&mut self) {
+    async fn enter(&mut self) {
         info!("Enter")
     }
 
-    fn leave(&mut self) {
+    async fn leave(&mut self) {
         info!("Leave")
     }
 
-    fn set_options(&mut self, opts: std::collections::HashMap<String, u32>) {
+    async fn set_options(&mut self, opts: std::collections::HashMap<String, u32>) {
         info!("Set options {:#?}", opts)
     }
 
-    fn reset_options(&mut self) {
+    async fn reset_options(&mut self) {
         info!("Reset options")
     }
 
-    fn set_clipboard(&mut self, data: ClipboardData) {
+    async fn set_clipboard(&mut self, data: ClipboardData) {
         info!(
             "Clipboard text:{}",
             data.text()

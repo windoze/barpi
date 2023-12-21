@@ -14,7 +14,7 @@ pub async fn start<A: Actuator, Addr: ToSocketAddrs, S: AsRef<str>>(
     device_name: S,
     actor: &mut A,
 ) -> Result<(), ConnectionError> {
-    let screen_size: (u16, u16) = actor.get_screen_size();
+    let screen_size: (u16, u16) = actor.get_screen_size().await;
 
     let mut stream = TcpStream::connect(addr).await?;
     // Turn off Nagle, this may not be available on ESP-IDF, so ignore the error.
@@ -41,7 +41,7 @@ pub async fn start<A: Actuator, Addr: ToSocketAddrs, S: AsRef<str>>(
     stream.write_u16(6).await?;
     stream.write_str(device_name.as_ref()).await?;
 
-    actor.connected();
+    actor.connected().await;
 
     #[cfg(feature = "clipboard")]
     let mut clipboard_stage = crate::ClipboardStage::None;
@@ -56,7 +56,7 @@ pub async fn start<A: Actuator, Addr: ToSocketAddrs, S: AsRef<str>>(
     {
         match packet {
             Packet::QueryInfo => {
-                packet_stream
+                match packet_stream
                     .write(Packet::DeviceInfo {
                         x: 0,
                         y: 0,
@@ -67,30 +67,36 @@ pub async fn start<A: Actuator, Addr: ToSocketAddrs, S: AsRef<str>>(
                         my: 0,
                     })
                     .await
-                    .map_err(|e| {
-                        actor.disconnected();
-                        e
-                    })?;
+                {
+                    Ok(_) => Ok(()),
+                    Err(e) => {
+                        actor.disconnected().await;
+                        Err(e)
+                    }
+                }?;
             }
             Packet::KeepAlive => {
-                packet_stream.write(Packet::KeepAlive).await.map_err(|e| {
-                    actor.disconnected();
-                    e
-                })?;
+                match packet_stream.write(Packet::KeepAlive).await {
+                    Ok(_) => Ok(()),
+                    Err(e) => {
+                        actor.disconnected().await;
+                        Err(e)
+                    }
+                }?;
             }
             Packet::MouseMoveAbs { x, y } => {
                 let abs_x = ((x as f32) * (0x7fff as f32 / (screen_size.0 as f32))).ceil() as u16;
                 let abs_y = ((y as f32) * (0x7fff as f32 / (screen_size.1 as f32))).ceil() as u16;
-                actor.set_cursor_position(abs_x, abs_y);
+                actor.set_cursor_position(abs_x, abs_y).await;
             }
             Packet::MouseMove { x, y } => {
-                actor.move_cursor(x, y);
+                actor.move_cursor(x, y).await;
             }
             Packet::KeyUp { id, mask, button } => {
-                actor.key_up(id, mask, button);
+                actor.key_up(id, mask, button).await;
             }
             Packet::KeyDown { id, mask, button } => {
-                actor.key_down(id, mask, button);
+                actor.key_down(id, mask, button).await;
             }
             Packet::KeyRepeat {
                 id,
@@ -98,39 +104,39 @@ pub async fn start<A: Actuator, Addr: ToSocketAddrs, S: AsRef<str>>(
                 button,
                 count,
             } => {
-                actor.key_repeat(id, mask, button, count);
+                actor.key_repeat(id, mask, button, count).await;
             }
             Packet::MouseDown { id } => {
-                actor.mouse_down(id);
+                actor.mouse_down(id).await;
             }
             Packet::MouseUp { id } => {
-                actor.mouse_up(id);
+                actor.mouse_up(id).await;
             }
             Packet::MouseWheel { x_delta, y_delta } => {
-                actor.mouse_wheel(x_delta, y_delta);
+                actor.mouse_wheel(x_delta, y_delta).await;
             }
             Packet::InfoAck => { //Ignore
             }
             #[cfg(feature = "barrier-options")]
             Packet::ResetOptions => {
-                actor.reset_options();
+                actor.reset_options().await;
             }
             #[cfg(feature = "barrier-options")]
             Packet::SetDeviceOptions(opts) => {
-                actor.set_options(opts);
+                actor.set_options(opts).await;
             }
             Packet::CursorEnter { .. } => {
-                actor.enter();
+                actor.enter().await;
             }
             Packet::CursorLeave => {
-                actor.leave();
+                actor.leave().await;
             }
             Packet::GrabClipboard { .. } => {}
             #[cfg(feature = "clipboard")]
             Packet::SetClipboard { id, data } => {
                 if !data.is_empty() {
                     debug!("Clipboard: id:{id}, data:...");
-                    actor.set_clipboard(data);
+                    actor.set_clipboard(data).await;
                 }
             }
             Packet::DeviceInfo { .. } | Packet::ErrorUnknownDevice | Packet::ClientNoOp => {

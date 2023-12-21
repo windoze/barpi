@@ -1,0 +1,21 @@
+[package]
+name = "serbar"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1"
+log = "0.4"
+env_logger = "0.10"
+tokio = { version = "1", features = ["full"] }
+tokio-serial = { version = "5" }
+tokio-util = "0.7"
+clap = { version = "4", features = ["derive", "env"] }
+
+barrier-client = { path = "../barrier-client", optional = true }
+synergy-hid = { path = "../synergy-hid" }
+
+[features]
+default = ["barrier-client"]

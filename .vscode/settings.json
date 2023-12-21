@@ -1,8 +1,20 @@
 {
-    "terminal.integrated.env.osx": {
-        "PATH": "/Users/chenxu/.azurelogicapps/dependencies/DotNetSDK:${env:PATH}"
-    },
-    "omnisharp.dotNetCliPaths": [
-        "/Users/chenxu/.azurelogicapps/dependencies/DotNetSDK"
-    ]
+  "editor.formatOnSave": true,
+  "[toml]": {
+    "editor.formatOnSave": false
+  },
+  "[markdown]": {
+    "editor.formatOnSave": false
+  },
+  "terminal.integrated.env.osx": {
+    "PATH": "/Users/chenxu/.azurelogicapps/dependencies/DotNetSDK:${env:PATH}"
+  },
+  "omnisharp.dotNetCliPaths": [
+    "/Users/chenxu/.azurelogicapps/dependencies/DotNetSDK"
+  ],
+  "cSpell.words": [
+    "BARPI",
+    "Serbar",
+    "usbmodem"
+  ]
 }

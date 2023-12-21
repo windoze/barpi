@@ -15,6 +15,7 @@ pub(crate) use descriptors::{
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ReportType {
+    Status = 0,
     Keyboard = 1,
     Mouse = 2,
     Consumer = 3,
@@ -50,6 +51,7 @@ impl SynergyHid {
 
     pub fn get_report_descriptor(report_type: ReportType) -> (u8, &'static [u8]) {
         match report_type {
+            ReportType::Status => (1, &[0]), // TODO: Error
             ReportType::Keyboard => (8, BOOT_KEYBOARD_REPORT_DESCRIPTOR),
             ReportType::Mouse => (7, ABSOLUTE_WHEEL_MOUSE_REPORT_DESCRIPTOR),
             ReportType::Consumer => (2, CONSUMER_CONTROL_REPORT_DESCRIPTOR),
@@ -162,8 +164,8 @@ impl SynergyHid {
         y: i16,
         report: &'a mut [u8],
     ) -> (ReportType, &'a [u8]) {
-        let x = (x as f32  / 120.0) as i16;
-        let y = (y as f32  / 120.0) as i16;
+        let x = (x as f32 / 120.0) as i16;
+        let y = (y as f32 / 120.0) as i16;
         let mut x = x as i8;
         let mut y = y as i8;
         if self.flip_mouse_wheel {
@@ -174,8 +176,17 @@ impl SynergyHid {
         (ReportType::Mouse, &report[..7])
     }
 
-    pub fn clear<'a>(&mut self, report_type: ReportType, report: &'a mut [u8]) -> (ReportType, &'a [u8]) {
+    pub fn clear<'a>(
+        &mut self,
+        report_type: ReportType,
+        report: &'a mut [u8],
+    ) -> (ReportType, &'a [u8]) {
         match report_type {
+            ReportType::Status => {
+                // TODO: Error
+                report[..1].copy_from_slice(&[0]);
+                (ReportType::Status, &report[..1])
+            }
             ReportType::Keyboard => {
                 report[..8].copy_from_slice(&self.keyboard_report.clear());
                 (ReportType::Keyboard, &report[..8])
