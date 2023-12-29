@@ -13,7 +13,7 @@ use tokio_util::sync::CancellationToken;
 
 mod ser_actuator;
 
-#[derive(Parser, Debug)]
+#[derive(Clone, Parser, Debug)]
 pub struct SerbarConfig {
     /// Barrier server address in "server:port" format
     #[arg(short = 's', long, env = "BARRIER_SERVER")]
@@ -40,13 +40,8 @@ pub struct SerbarConfig {
     pub usb_serial: String,
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
-
-    let args = SerbarConfig::parse();
-
-    let ports = tokio_serial::available_ports()?;
+fn find_port(args: &SerbarConfig) -> Option<String> {
+    let ports = tokio_serial::available_ports().unwrap_or_default();
     let mut path: Option<String> = None;
     for p in ports {
         match p.port_type {
@@ -81,10 +76,15 @@ async fn main() -> anyhow::Result<()> {
 
     if path.is_none() {
         error!("No Pico KVM found");
-        return Ok(());
     }
+    path
+}
 
-    let port = tokio_serial::new(path.clone().unwrap(), 115200).open_native_async()?;
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+
+    let args = SerbarConfig::parse();
 
     let token = CancellationToken::new();
     let cloned_token: CancellationToken = token.clone();
@@ -94,24 +94,37 @@ async fn main() -> anyhow::Result<()> {
         let mut sighup = signal(SignalKind::hangup()).unwrap();
         loop {
             select! {
-                _ = sigterm.recv() => info!("Recieve SIGTERM, shutting down..."),
-                _ = sigint.recv() => info!("Recieve SIGINT, shutting down..."),
-                _ = sighup.recv() => info!("Recieve SIGHUP, shutting down..."),
+                _ = sigterm.recv() => info!("Receive SIGTERM, shutting down..."),
+                _ = sigint.recv() => info!("Receive SIGINT, shutting down..."),
+                _ = sighup.recv() => info!("Receive SIGHUP, shutting down..."),
             };
             cloned_token.cancel();
         }
     });
 
-    let mut actuator = SerbarActuator::new(
-        args.screen_width,
-        args.screen_height,
-        args.flip_mouse_wheel,
-        port,
-    );
+    let args_clone = args.clone();
     let main_task = async move {
-        start(args.server, args.screen_name, &mut actuator)
-            .await
-            .ok();
+        loop {
+            if let Some(path) = find_port(&args_clone) {
+                if let Ok(port) = tokio_serial::new(path.clone(), 115200).open_native_async() {
+                    let mut actuator = SerbarActuator::new(
+                        args_clone.screen_width,
+                        args_clone.screen_height,
+                        args_clone.flip_mouse_wheel,
+                        port,
+                    );
+                    start(
+                        args_clone.server.clone(),
+                        args_clone.screen_name.clone(),
+                        &mut actuator,
+                    )
+                    .await
+                    .ok();
+                }
+            }
+            warn!("Client exited, retrying in 1 second...");
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        }
     };
 
     let join_handle = tokio::spawn(async move {
@@ -129,14 +142,16 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // TODO: Fix lifetime issue, this is too stupid
-    let port = tokio_serial::new(path.clone().unwrap(), 115200).open_native_async()?;
-    let mut actuator = SerbarActuator::new(
-        args.screen_width,
-        args.screen_height,
-        args.flip_mouse_wheel,
-        port,
-    );
-    actuator.clear().await?;
+    if let Some(path) = find_port(&args) {
+        let port = tokio_serial::new(path, 115200).open_native_async()?;
+        let mut actuator = SerbarActuator::new(
+            args.screen_width,
+            args.screen_height,
+            args.flip_mouse_wheel,
+            port,
+        );
+        actuator.clear().await?;
+    }
 
     Ok(())
 }

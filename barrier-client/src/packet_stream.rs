@@ -109,7 +109,7 @@ impl<S: PacketReader + PacketWriter> PacketStream<S> {
             b"DCLP" => {
                 let id = chunk.read_u8().await?;
                 limit -= 1;
-                let _seq_num = chunk.read_u32().await?;
+                let seq_num = chunk.read_u32().await?;
                 limit -= 4;
                 let mark = chunk.read_u8().await?;
                 limit -= 1;
@@ -122,7 +122,7 @@ impl<S: PacketReader + PacketWriter> PacketStream<S> {
                     vec![]
                 };
                 limit = 0;
-                debug!("Chunk: {id}, {mark} {}", buf.len());
+                debug!("Chunk: id:{id}, seq:{seq_num}, mark:{mark} {}", buf.len());
 
                 // mark 1 is the total length string in ASCII
                 // mark 2 is the actual data and is split into chunks
@@ -221,6 +221,7 @@ impl<S: PacketReader + PacketWriter> PacketStream<S> {
                 match clipboard_stage {
                     ClipboardStage::Mark3 { id, data } => Packet::SetClipboard {
                         id: *id,
+                        seq_num,
                         data: parse_clipboard(data).await?,
                     },
                     _ => Packet::ClientNoOp,

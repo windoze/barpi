@@ -5,17 +5,15 @@ mod packet;
 mod packet_io;
 mod packet_stream;
 
-pub(crate) use error::{ConnectionError, PacketError};
+pub use error::{ActuatorError, ConnectionError, PacketError};
 pub(crate) use packet::Packet;
 pub(crate) use packet_io::{PacketReader, PacketWriter};
 pub(crate) use packet_stream::PacketStream;
 
-pub use actuator::{Actuator, ActuatorMessage};
-pub use client::start;
 #[cfg(feature = "async-actuator")]
 pub use actuator::AsyncActuator;
-#[cfg(feature = "async-actuator")]
-pub use client::start_async;
+pub use actuator::{Actuator, ActuatorMessage};
+pub use client::start;
 
 #[cfg(feature = "clipboard")]
 mod clipboard;

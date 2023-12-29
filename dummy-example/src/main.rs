@@ -13,87 +13,126 @@ struct DummyActuator {
 }
 
 impl Actuator for DummyActuator {
-    async fn connected(&mut self) {
+    async fn connected(&mut self) -> Result<(), barrier_client::ActuatorError> {
         info!("Connected");
+        Ok(())
     }
 
-    async fn disconnected(&mut self) {
+    async fn disconnected(&mut self) -> Result<(), barrier_client::ActuatorError> {
         info!("Disconnected");
+        Ok(())
     }
 
-    async fn get_screen_size(&self) -> (u16, u16) {
-        (self.width, self.height)
+    async fn get_screen_size(&self) -> Result<(u16, u16), barrier_client::ActuatorError> {
+        Ok((self.width, self.height))
     }
 
-    async fn get_cursor_position(&self) -> (u16, u16) {
-        (self.x, self.y)
+    async fn get_cursor_position(&self) -> Result<(u16, u16), barrier_client::ActuatorError> {
+        Ok((self.x, self.y))
     }
 
-    async fn set_cursor_position(&mut self, x: u16, y: u16) {
+    async fn set_cursor_position(
+        &mut self,
+        x: u16,
+        y: u16,
+    ) -> Result<(), barrier_client::ActuatorError> {
         self.x = x;
         self.y = y;
         let report = &mut [0; 9];
         let ret = self.hid.set_cursor_position(x, y, report);
         info!("Set cursor position to {x} {y}, HID report: {:?}", ret);
+        Ok(())
     }
 
-    async fn move_cursor(&mut self, x: i16, y: i16) {
+    async fn move_cursor(&mut self, x: i16, y: i16) -> Result<(), barrier_client::ActuatorError> {
         self.x = (self.x as i32 + x as i32) as u16;
         self.y = (self.y as i32 + y as i32) as u16;
-        self.set_cursor_position(self.x, self.y).await;
+        self.set_cursor_position(self.x, self.y).await
     }
 
-    async fn mouse_down(&mut self, button: i8) {
+    async fn mouse_down(&mut self, button: i8) -> Result<(), barrier_client::ActuatorError> {
         let report = &mut [0; 9];
         let ret = self.hid.mouse_down(button, report);
         info!("Mouse button {button} down, HID report: {:?}", ret);
+        Ok(())
     }
 
-    async fn mouse_up(&mut self, button: i8) {
+    async fn mouse_up(&mut self, button: i8) -> Result<(), barrier_client::ActuatorError> {
         let report = &mut [0; 9];
         let ret = self.hid.mouse_up(button, report);
         info!("Mouse button {button} up, HID report: {:?}", ret);
+        Ok(())
     }
 
-    async fn mouse_wheel(&mut self, x: i16, y: i16) {
+    async fn mouse_wheel(&mut self, x: i16, y: i16) -> Result<(), barrier_client::ActuatorError> {
         let report = &mut [0; 9];
         let ret = self.hid.mouse_scroll(x, y, report);
         info!("Mouse wheel {x} {y}, HID report: {:?}", ret);
+        Ok(())
     }
 
-    async fn key_down(&mut self, key: u16, mask: u16, button: u16) {
+    async fn key_down(
+        &mut self,
+        key: u16,
+        mask: u16,
+        button: u16,
+    ) -> Result<(), barrier_client::ActuatorError> {
         let report = &mut [0; 9];
         let ret = self.hid.key_down(key, mask, button, report);
         info!("Key down {key} {mask} {button}, HID report: {:?}", ret);
+        Ok(())
     }
 
-    async fn key_repeat(&mut self, key: u16, mask: u16, button: u16, count: u16) {
-        info!("Key repeat {key} {mask} {button} {count}")
+    async fn key_repeat(
+        &mut self,
+        key: u16,
+        mask: u16,
+        button: u16,
+        count: u16,
+    ) -> Result<(), barrier_client::ActuatorError> {
+        info!("Key repeat {key} {mask} {button} {count}");
+        Ok(())
     }
 
-    async fn key_up(&mut self, key: u16, mask: u16, button: u16) {
+    async fn key_up(
+        &mut self,
+        key: u16,
+        mask: u16,
+        button: u16,
+    ) -> Result<(), barrier_client::ActuatorError> {
         let report = &mut [0; 9];
         let ret = self.hid.key_up(key, mask, button, report);
         info!("Key up {key} {mask} {button}, HID report: {:?}", ret);
+        Ok(())
     }
 
-    async fn enter(&mut self) {
-        info!("Enter")
+    async fn enter(&mut self) -> Result<(), barrier_client::ActuatorError> {
+        info!("Enter");
+        Ok(())
     }
 
-    async fn leave(&mut self) {
-        info!("Leave")
+    async fn leave(&mut self) -> Result<(), barrier_client::ActuatorError> {
+        info!("Leave");
+        Ok(())
     }
 
-    async fn set_options(&mut self, opts: std::collections::HashMap<String, u32>) {
-        info!("Set options {:#?}", opts)
+    async fn set_options(
+        &mut self,
+        opts: std::collections::HashMap<String, u32>,
+    ) -> Result<(), barrier_client::ActuatorError> {
+        info!("Set options {:#?}", opts);
+        Ok(())
     }
 
-    async fn reset_options(&mut self) {
-        info!("Reset options")
+    async fn reset_options(&mut self) -> Result<(), barrier_client::ActuatorError> {
+        info!("Reset options");
+        Ok(())
     }
 
-    async fn set_clipboard(&mut self, data: ClipboardData) {
+    async fn set_clipboard(
+        &mut self,
+        data: ClipboardData,
+    ) -> Result<(), barrier_client::ActuatorError> {
         info!(
             "Clipboard text:{}",
             data.text()
@@ -110,6 +149,13 @@ impl Actuator for DummyActuator {
             "Clipboard bitmap:{}",
             data.bitmap().map(|_| "yes").unwrap_or("no")
         );
+        Ok(())
+    }
+
+    async fn get_clipboard(
+        &mut self,
+    ) -> Result<Option<ClipboardData>, barrier_client::ActuatorError> {
+        todo!()
     }
 }
 

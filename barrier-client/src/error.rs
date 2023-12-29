@@ -22,4 +22,14 @@ pub enum ConnectionError {
     TcpError(#[from] io::Error),
     #[error("invalid data received")]
     ProtocolError(#[from] PacketError),
+    #[error(transparent)]
+    ActuatorError(#[from] ActuatorError),
+}
+
+#[derive(Error, Debug)]
+pub enum ActuatorError {
+    #[error("io error")]
+    IoError,
+    #[error("Clipboard error")]
+    ClipboardError,
 }

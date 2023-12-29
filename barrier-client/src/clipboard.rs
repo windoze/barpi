@@ -1,6 +1,6 @@
 use std::io::Cursor;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 use super::PacketError;
@@ -40,6 +40,16 @@ pub struct ClipboardData {
 }
 
 impl ClipboardData {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn from_text(text: String) -> Self {
+        let mut ret = Self::new();
+        ret.text = text.into_bytes();
+        ret
+    }
+
     pub fn raw_text(&self) -> &[u8] {
         &self.text
     }
@@ -74,6 +84,20 @@ impl ClipboardData {
 
     pub fn is_empty(&self) -> bool {
         self.text.is_empty() && self.html.is_empty() && self.bitmap.is_empty()
+    }
+
+    pub fn formats(&self) -> usize {
+        let mut ret = 0;
+        if !self.text.is_empty() {
+            ret += 1;
+        }
+        if !self.html.is_empty() {
+            ret += 1;
+        }
+        if !self.bitmap.is_empty() {
+            ret += 1;
+        }
+        ret
     }
 }
 
