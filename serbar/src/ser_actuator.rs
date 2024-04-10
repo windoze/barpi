@@ -1,4 +1,5 @@
 use barrier_client::{Actuator, ActuatorError, ClipboardData};
+#[cfg(features = "gui")]
 use clipboard::{ClipboardContext, ClipboardProvider};
 use log::{debug, info};
 use synergy_hid::{ReportType, SynergyHid};
@@ -25,7 +26,9 @@ pub struct SerbarActuator {
     y: u16,
     hid: SynergyHid,
     port: SerialStream,
+    #[cfg(features = "gui")]
     clipboard_text: String,
+    #[cfg(features = "gui")]
     ctx: ClipboardContext,
 }
 
@@ -38,7 +41,9 @@ impl SerbarActuator {
             y: 0,
             hid: SynergyHid::new(flip_mouse_wheel),
             port,
+            #[cfg(features = "gui")]
             clipboard_text: String::new(),
+            #[cfg(features = "gui")]
             ctx: ClipboardProvider::new().unwrap(),
         }
     }
@@ -208,11 +213,18 @@ impl Actuator for SerbarActuator {
     }
 
     async fn get_clipboard(&mut self) -> Result<Option<ClipboardData>, ActuatorError> {
-        Ok(self
-            .ctx
-            .get_contents()
-            .map(|text| Some(ClipboardData::from_text(text)))
-            .unwrap_or_default())
+        #[cfg(features = "gui")]
+        {
+            Ok(self
+                .ctx
+                .get_contents()
+                .map(|text| Some(ClipboardData::from_text(text)))
+                .unwrap_or_default())
+        }
+        #[cfg(not(features = "gui"))]
+        {
+            Ok(None)
+        }
     }
 
     async fn set_clipboard(&mut self, data: ClipboardData) -> Result<(), ActuatorError> {
@@ -233,6 +245,7 @@ impl Actuator for SerbarActuator {
             data.bitmap().map(|_| "yes").unwrap_or("no")
         );
 
+        #[cfg(features = "gui")]
         if !data.raw_text().is_empty() {
             match std::str::from_utf8(data.raw_text()) {
                 Ok(s) => {

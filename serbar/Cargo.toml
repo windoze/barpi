@@ -9,16 +9,17 @@ rust-version = "1.75.0"
 [dependencies]
 anyhow = "1"
 log = "0.4"
-env_logger = "0.10"
+env_logger = "0.11"
 tokio = { version = "1", features = ["full"] }
-tokio-serial = { version = "5" }
+tokio-serial = { version = "5", features = ["libudev"] }
 tokio-util = "0.7"
 clap = { version = "4", features = ["derive", "env"] }
 
-clipboard = "0.5"
+clipboard = { version = "0.5", optional = true }
 
 barrier-client = { path = "../barrier-client", optional = true }
 synergy-hid = { path = "../synergy-hid" }
 
 [features]
 default = ["barrier-client"]
+gui = ["clipboard"]

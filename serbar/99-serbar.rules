@@ -1,0 +1,1 @@
+ACTION=="change", ATTRS{idVendor}=="0d0a", ATTRS{idProduct}=="c0de", TAG+="systemd", ENV{SYSTEMD_WANTS}="serbar.service"
