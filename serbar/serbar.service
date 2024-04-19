@@ -1,5 +1,7 @@
 [Unit] 
 Description=SerBar Service
+After=dev-serbar.device
+BindsTo=dev-serbar.device
 
 [Service] 
 ExecStart=/usr/local/bin/serbar --server 192.168.2.59:24800 --screen-name NUC --screen-width 1920 --screen-height 1080 -f
