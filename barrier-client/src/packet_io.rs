@@ -1,9 +1,8 @@
-use async_trait::async_trait;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use super::PacketError;
 
-#[async_trait]
+#[allow(dead_code)]
 pub trait PacketReader: AsyncRead + Send + Unpin {
     async fn consume_bytes(&mut self, mut len: usize) -> Result<(), PacketError> {
         let mut buf = [0; 16];
@@ -39,7 +38,6 @@ pub trait PacketReader: AsyncRead + Send + Unpin {
 
 impl<T: AsyncRead + Send + Unpin> PacketReader for T {}
 
-#[async_trait]
 pub trait PacketWriter: AsyncWrite + Send + Unpin {
     async fn write_str(&mut self, data: &str) -> Result<(), PacketError> {
         self.write_u32(data.len() as u32).await?;
