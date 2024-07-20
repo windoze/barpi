@@ -245,6 +245,7 @@ impl Actuator for SerbarActuator {
             data.bitmap().map(|_| "yes").unwrap_or("no")
         );
 
+        #[cfg(feature = "gui")]
         if !data.raw_text().is_empty() {
             match std::str::from_utf8(data.raw_text()) {
                 Ok(s) => {

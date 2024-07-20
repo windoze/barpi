@@ -11,7 +11,7 @@ anyhow = "1"
 log = "0.4"
 env_logger = "0.11"
 tokio = { version = "1", features = ["full"] }
-tokio-serial = { version = "5" }
+tokio-serial = { version = "5", features = ["libudev"] }
 tokio-util = "0.7"
 clap = { version = "4", features = ["derive", "env"] }
 
@@ -23,3 +23,4 @@ synergy-hid = { path = "../synergy-hid" }
 [features]
 default = []
 clipboard = ["barrier-client/clipboard", "dep:clipboard"]
+gui = ["clipboard"]

@@ -2,6 +2,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use super::PacketError;
 
+#[allow(dead_code)]
 pub trait PacketReader: AsyncRead + Send + Unpin {
     async fn discard_exact(&mut self, len: usize) -> Result<(), PacketError> {
         let mut buf = [0; 16];
