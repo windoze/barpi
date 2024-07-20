@@ -2,6 +2,8 @@
 Description=SerBar Service
 After=dev-serbar.device
 BindsTo=dev-serbar.device
+After=network-online.target
+Wants=network-online.target
 
 [Service] 
 ExecStart=/usr/local/bin/serbar --server 192.168.2.59:24800 --screen-name NUC --screen-width 1920 --screen-height 1080 -f
