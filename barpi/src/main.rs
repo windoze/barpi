@@ -83,7 +83,7 @@ pub fn reg(functions: Vec<Handle>, cfg: &BarpiConfig) -> RegGadget {
     if cfg.max_power_ma > 500 {
         warn!("USB max power is limited to 500mA");
     }
-    config.set_max_power_ma(min(500, cfg.max_power_ma)).unwrap();
+    config.max_power = min(500, cfg.max_power_ma);
     config.self_powered = cfg.self_powered;
     // We can support remote wakeup only if the device is self powered
     config.remote_wakeup = cfg.self_powered;
@@ -130,7 +130,7 @@ pub fn get_dev(prefix: &str, major: libc::c_uint, minor: libc::c_uint) -> anyhow
                 let dev = std::fs::metadata(&path)
                     .expect("Failed to read metadata")
                     .st_rdev();
-                if dev == libc::makedev(major, minor) {
+                if dev == unsafe { libc::makedev(major, minor) } {
                     return Ok(path);
                 }
             }

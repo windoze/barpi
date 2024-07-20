@@ -12,8 +12,10 @@
   "omnisharp.dotNetCliPaths": [
     "/Users/chenxu/.azurelogicapps/dependencies/DotNetSDK"
   ],
+  "rust-analyzer.cargo.features": ["barrier-options"],
   "cSpell.words": [
     "Addrs",
+    "arboard",
     "BARPI",
     "CALV",
     "CCLP",

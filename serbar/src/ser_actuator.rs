@@ -1,6 +1,6 @@
-use barrier_client::{Actuator, ActuatorError};
 #[cfg(feature = "clipboard")]
-use clipboard::{ClipboardContext, ClipboardProvider};
+use arboard::Clipboard;
+use barrier_client::{Actuator, ActuatorError};
 use log::{debug, info};
 use synergy_hid::{ReportType, SynergyHid};
 use tokio::io::AsyncWriteExt;
@@ -27,9 +27,7 @@ pub struct SerbarActuator {
     hid: SynergyHid,
     port: SerialStream,
     #[cfg(feature = "clipboard")]
-    clipboard_text: String,
-    #[cfg(feature = "clipboard")]
-    ctx: ClipboardContext,
+    ctx: Clipboard,
 }
 
 impl SerbarActuator {
@@ -42,9 +40,7 @@ impl SerbarActuator {
             hid: SynergyHid::new(flip_mouse_wheel),
             port,
             #[cfg(feature = "clipboard")]
-            clipboard_text: String::new(),
-            #[cfg(feature = "clipboard")]
-            ctx: ClipboardProvider::new().unwrap(),
+            ctx: Clipboard::new().unwrap(),
         }
     }
 
@@ -68,6 +64,7 @@ impl SerbarActuator {
                 buf[1..3].copy_from_slice(&report.1[0..2]);
             }
         }
+        debug!("Send HID report: {:?}", buf);
         self.port
             .write_all(buf)
             .await
@@ -177,6 +174,12 @@ impl Actuator for SerbarActuator {
         button: u16,
         count: u16,
     ) -> Result<(), ActuatorError> {
+        // When the key is held down, the keyboard on the server will keep triggering key strokes,
+        // then the Barrier server will send key repeat to the active client until the key is released.
+        // We ignore key repeat message because we have a real HID device on the client side, and the HID
+        // device will keep key pressed until we receive key up.
+        // This will generate multiple key down HID reports on the client side, the repeat rate is set by
+        // the client OS. So we can separate repeat rate from the server side.
         debug!("Key repeat {key} {mask} {button} {count}");
         Ok(())
     }
@@ -218,7 +221,8 @@ impl Actuator for SerbarActuator {
     ) -> Result<Option<barrier_client::ClipboardData>, ActuatorError> {
         Ok(self
             .ctx
-            .get_contents()
+            .get_text()
+            .ok()
             .map(|text| Some(barrier_client::ClipboardData::from_text(text)))
             .unwrap_or_default())
     }
@@ -245,24 +249,13 @@ impl Actuator for SerbarActuator {
             data.bitmap().map(|_| "yes").unwrap_or("no")
         );
 
-        #[cfg(feature = "gui")]
-        if !data.raw_text().is_empty() {
-            match std::str::from_utf8(data.raw_text()) {
-                Ok(s) => {
-                    if !s.is_empty() && s != self.clipboard_text {
-                        self.clipboard_text = s.to_string();
-                        self.ctx
-                            .set_contents(self.clipboard_text.clone())
-                            .map_err(|e| {
-                                info!("Failed to set clipboard: {}", e);
-                                ActuatorError::ClipboardError
-                            })?;
-                    }
-                }
-                Err(e) => {
-                    info!("Invalid UTF-8 sequence: {}", e);
-                }
+        // TODO: Bitmap
+        if let Some(text) = data.text() {
+            if text != self.ctx.get_text().ok().unwrap_or_default() {
+                self.ctx.set_text(text).ok();
             }
+        } else if let Some(html) = data.html() {
+            self.ctx.set_html(html, None).ok();
         }
         Ok(())
     }

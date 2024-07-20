@@ -51,6 +51,7 @@ impl BarpiActuator {
             ReportType::Keyboard => self.keyboard_file.write_all(report.1),
             ReportType::Mouse => self.mouse_file.write_all(report.1),
             ReportType::Consumer => self.consumer_file.write_all(report.1),
+            ReportType::Status => todo!(),
         };
         match r {
             Ok(_) => (),
@@ -63,80 +64,97 @@ impl BarpiActuator {
 }
 
 impl Actuator for BarpiActuator {
-    fn connected(&mut self) {
+    async fn connected(&mut self) -> Result<(), ActuatorError> {
         info!("Connected");
+        Ok(())
     }
 
-    fn disconnected(&mut self) {
+    async fn disconnected(&mut self) -> Result<(), ActuatorError> {
         info!("Disconnected");
+        Ok(())
     }
 
-    fn get_screen_size(&self) -> (u16, u16) {
-        (self.width, self.height)
+    async fn get_screen_size(&self) -> Result<(u16, u16), ActuatorError> {
+        Ok((self.width, self.height))
     }
 
-    fn get_cursor_position(&self) -> (u16, u16) {
-        (self.x, self.y)
+    async fn get_cursor_position(&self) -> Result<(u16, u16), ActuatorError> {
+        Ok((self.x, self.y))
     }
 
-    fn set_cursor_position(&mut self, x: u16, y: u16) {
+    async fn set_cursor_position(&mut self, x: u16, y: u16) -> Result<(), ActuatorError> {
         (self.x, self.y) = self.scale_position(x, y);
         let report = &mut [0; 9];
         let ret = self.hid.set_cursor_position(x, y, report);
         debug!("Set cursor position to {x} {y}, HID report: {:?}", ret);
         self.write_report(ret);
+        Ok(())
     }
 
-    fn move_cursor(&mut self, x: i16, y: i16) {
+    async fn move_cursor(&mut self, x: i16, y: i16) -> Result<(), ActuatorError> {
         self.x = (self.x as i32 + x as i32) as u16;
         self.y = (self.y as i32 + y as i32) as u16;
         self.set_cursor_position(self.x, self.y);
+        Ok(())
     }
 
-    fn mouse_down(&mut self, button: i8) {
+    async fn mouse_down(&mut self, button: i8) -> Result<(), ActuatorError> {
         let report = &mut [0; 9];
         let ret = self.hid.mouse_down(button, report);
         debug!("Mouse button {button} down, HID report: {:?}", ret);
         self.write_report(ret);
+        Ok(())
     }
 
-    fn mouse_up(&mut self, button: i8) {
+    async fn mouse_up(&mut self, button: i8) -> Result<(), ActuatorError> {
         let report = &mut [0; 9];
         let ret = self.hid.mouse_up(button, report);
         debug!("Mouse button {button} up, HID report: {:?}", ret);
         self.write_report(ret);
+        Ok(())
     }
 
-    fn mouse_wheel(&mut self, x: i16, y: i16) {
+    async fn mouse_wheel(&mut self, x: i16, y: i16) -> Result<(), ActuatorError> {
         let report = &mut [0; 9];
         let ret = self.hid.mouse_scroll(x, y, report);
         debug!("Mouse wheel {x} {y}, HID report: {:?}", ret);
         self.write_report(ret);
+        Ok(())
     }
 
-    fn key_down(&mut self, key: u16, mask: u16, button: u16) {
+    async fn key_down(&mut self, key: u16, mask: u16, button: u16) -> Result<(), ActuatorError> {
         let report = &mut [0; 9];
         let ret = self.hid.key_down(key, mask, button, report);
         debug!("Key down {key} {mask} {button}, HID report: {:?}", ret);
         self.write_report(ret);
+        Ok(())
     }
 
-    fn key_repeat(&mut self, key: u16, mask: u16, button: u16, count: u16) {
-        debug!("Key repeat {key} {mask} {button} {count}")
+    async fn key_repeat(
+        &mut self,
+        key: u16,
+        mask: u16,
+        button: u16,
+        count: u16,
+    ) -> Result<(), ActuatorError> {
+        debug!("Key repeat {key} {mask} {button} {count}");
+        Ok(())
     }
 
-    fn key_up(&mut self, key: u16, mask: u16, button: u16) {
+    async fn key_up(&mut self, key: u16, mask: u16, button: u16) -> Result<(), ActuatorError> {
         let report = &mut [0; 9];
         let ret = self.hid.key_up(key, mask, button, report);
         debug!("Key up {key} {mask} {button}, HID report: {:?}", ret);
         self.write_report(ret);
+        Ok(())
     }
 
-    fn enter(&mut self) {
-        info!("Enter")
+    async fn enter(&mut self) -> Result<(), ActuatorError> {
+        info!("Enter");
+        Ok(())
     }
 
-    fn leave(&mut self) {
+    async fn leave(&mut self) -> Result<(), ActuatorError> {
         info!("Leave");
         debug!("Clear HID reports");
         let report = &mut [0; 9];
@@ -145,18 +163,25 @@ impl Actuator for BarpiActuator {
         let ret = self.hid.clear(ReportType::Mouse, report);
         self.write_report(ret);
         let ret = self.hid.clear(ReportType::Consumer, report);
+
         self.write_report(ret);
+        Ok(())
     }
 
-    fn set_options(&mut self, opts: std::collections::HashMap<String, u32>) {
-        debug!("Set options {:#?}", opts)
+    async fn set_options(
+        &mut self,
+        opts: std::collections::HashMap<String, u32>,
+    ) -> Result<(), ActuatorError> {
+        debug!("Set options {:#?}", opts);
+        Ok(())
     }
 
-    fn reset_options(&mut self) {
-        debug!("Reset options")
+    async fn reset_options(&mut self) -> Result<(), ActuatorError> {
+        debug!("Reset options");
+        Ok(())
     }
 
-    fn set_clipboard(&mut self, data: ClipboardData) {
+    async fn set_clipboard(&mut self, data: ClipboardData) -> Result<(), ActuatorError> {
         info!(
             "Clipboard text:{}",
             data.text()
@@ -173,5 +198,11 @@ impl Actuator for BarpiActuator {
             "Clipboard bitmap:{}",
             data.bitmap().map(|_| "yes").unwrap_or("no")
         );
+        Ok(())
+    }
+
+    async fn get_clipboard(&mut self) -> Result<Option<ClipboardData>, ActuatorError> {
+        info!("Get clipboard");
+        Ok(())
     }
 }
