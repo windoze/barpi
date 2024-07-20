@@ -130,7 +130,7 @@ pub fn get_dev(prefix: &str, major: libc::c_uint, minor: libc::c_uint) -> anyhow
                 let dev = std::fs::metadata(&path)
                     .expect("Failed to read metadata")
                     .st_rdev();
-                if dev == unsafe { libc::makedev(major, minor) } {
+                if dev == libc::makedev(major, minor) {
                     return Ok(path);
                 }
             }

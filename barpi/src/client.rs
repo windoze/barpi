@@ -1,6 +1,6 @@
 use std::{fs::File, io::Write};
 
-use barrier_client::{Actuator, ClipboardData};
+use barrier_client::{Actuator, ActuatorError, ClipboardData};
 use log::{debug, error, info};
 use synergy_hid::{ReportType, SynergyHid};
 use tokio_util::sync::CancellationToken;
@@ -94,8 +94,7 @@ impl Actuator for BarpiActuator {
     async fn move_cursor(&mut self, x: i16, y: i16) -> Result<(), ActuatorError> {
         self.x = (self.x as i32 + x as i32) as u16;
         self.y = (self.y as i32 + y as i32) as u16;
-        self.set_cursor_position(self.x, self.y);
-        Ok(())
+        self.set_cursor_position(self.x, self.y).await
     }
 
     async fn mouse_down(&mut self, button: i8) -> Result<(), ActuatorError> {
@@ -203,6 +202,6 @@ impl Actuator for BarpiActuator {
 
     async fn get_clipboard(&mut self) -> Result<Option<ClipboardData>, ActuatorError> {
         info!("Get clipboard");
-        Ok(())
+        Ok(None)
     }
 }
