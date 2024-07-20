@@ -76,7 +76,7 @@ pub struct BarpiConfig {
     pub self_powered: bool,
 }
 
-pub fn reg(funcs: Vec<Handle>, cfg: &BarpiConfig) -> RegGadget {
+pub fn reg(functions: Vec<Handle>, cfg: &BarpiConfig) -> RegGadget {
     let udc = default_udc().expect("cannot get UDC");
 
     let mut config = Config::new("config");
@@ -87,7 +87,7 @@ pub fn reg(funcs: Vec<Handle>, cfg: &BarpiConfig) -> RegGadget {
     config.self_powered = cfg.self_powered;
     // We can support remote wakeup only if the device is self powered
     config.remote_wakeup = cfg.self_powered;
-    for func in funcs {
+    for func in functions {
         config = config.with_function(func);
     }
 
@@ -248,9 +248,9 @@ async fn main() -> anyhow::Result<()> {
         let mut sighup = signal(SignalKind::hangup()).unwrap();
         loop {
             select! {
-                _ = sigterm.recv() => info!("Recieve SIGTERM, shutting down..."),
-                _ = sigint.recv() => info!("Recieve SIGINT, shutting down..."),
-                _ = sighup.recv() => info!("Recieve SIGHUP, shutting down..."),
+                _ = sigterm.recv() => info!("Receive SIGTERM, shutting down..."),
+                _ = sigint.recv() => info!("Receive SIGINT, shutting down..."),
+                _ = sighup.recv() => info!("Receive SIGHUP, shutting down..."),
             };
             cloned_token.cancel();
         }

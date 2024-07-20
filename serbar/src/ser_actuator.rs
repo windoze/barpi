@@ -1,4 +1,5 @@
-use barrier_client::{Actuator, ActuatorError, ClipboardData};
+use barrier_client::{Actuator, ActuatorError};
+#[cfg(feature = "clipboard")]
 use clipboard::{ClipboardContext, ClipboardProvider};
 use log::{debug, info};
 use synergy_hid::{ReportType, SynergyHid};
@@ -25,7 +26,9 @@ pub struct SerbarActuator {
     y: u16,
     hid: SynergyHid,
     port: SerialStream,
+    #[cfg(feature = "clipboard")]
     clipboard_text: String,
+    #[cfg(feature = "clipboard")]
     ctx: ClipboardContext,
 }
 
@@ -38,7 +41,9 @@ impl SerbarActuator {
             y: 0,
             hid: SynergyHid::new(flip_mouse_wheel),
             port,
+            #[cfg(feature = "clipboard")]
             clipboard_text: String::new(),
+            #[cfg(feature = "clipboard")]
             ctx: ClipboardProvider::new().unwrap(),
         }
     }
@@ -207,15 +212,22 @@ impl Actuator for SerbarActuator {
         Ok(())
     }
 
-    async fn get_clipboard(&mut self) -> Result<Option<ClipboardData>, ActuatorError> {
+    #[cfg(feature = "clipboard")]
+    async fn get_clipboard(
+        &mut self,
+    ) -> Result<Option<barrier_client::ClipboardData>, ActuatorError> {
         Ok(self
             .ctx
             .get_contents()
-            .map(|text| Some(ClipboardData::from_text(text)))
+            .map(|text| Some(barrier_client::ClipboardData::from_text(text)))
             .unwrap_or_default())
     }
 
-    async fn set_clipboard(&mut self, data: ClipboardData) -> Result<(), ActuatorError> {
+    #[cfg(feature = "clipboard")]
+    async fn set_clipboard(
+        &mut self,
+        data: barrier_client::ClipboardData,
+    ) -> Result<(), ActuatorError> {
         info!(
             "Clipboard text:{}",
             data.text()

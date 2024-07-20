@@ -13,8 +13,36 @@
     "/Users/chenxu/.azurelogicapps/dependencies/DotNetSDK"
   ],
   "cSpell.words": [
+    "Addrs",
     "BARPI",
+    "CALV",
+    "CCLP",
+    "CIAK",
+    "CINN",
+    "CNOP",
+    "COUT",
+    "DCLP",
+    "DINF",
+    "DKDN",
+    "DKRP",
+    "DKUP",
+    "DMDN",
+    "DMMV",
+    "DMRM",
+    "DMUP",
+    "DMWM",
+    "DSOP",
+    "EUNK",
+    "HBRT",
+    "keepalive",
+    "keycodes",
+    "libc",
+    "makedev",
+    "QINF",
+    "rdev",
     "Serbar",
-    "usbmodem"
+    "unreg",
+    "usbmodem",
+    "wakeup"
   ]
 }

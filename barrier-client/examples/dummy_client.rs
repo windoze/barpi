@@ -1,4 +1,4 @@
-use barrier_client::{self, start, Actuator};
+use barrier_client::{self, start, Actuator, ActuatorError};
 use env_logger::Env;
 use log::info;
 
@@ -15,80 +15,103 @@ struct DummyActuator {
 }
 
 impl Actuator for DummyActuator {
-    async fn connected(&mut self) {
+    async fn connected(&mut self) -> Result<(), ActuatorError> {
         info!("Connected");
+        Ok(())
     }
 
-    async fn disconnected(&mut self) {
+    async fn disconnected(&mut self) -> Result<(), ActuatorError> {
         info!("Disconnected");
+        Ok(())
     }
 
-    async fn get_screen_size(&self) -> (u16, u16) {
-        (self.width, self.height)
+    async fn get_screen_size(&self) -> Result<(u16, u16), ActuatorError> {
+        Ok((self.width, self.height))
     }
 
-    async fn get_cursor_position(&self) -> (u16, u16) {
-        (self.x, self.y)
+    async fn get_cursor_position(&self) -> Result<(u16, u16), ActuatorError> {
+        Ok((self.x, self.y))
     }
 
-    async fn set_cursor_position(&mut self, x: u16, y: u16) {
+    async fn set_cursor_position(&mut self, x: u16, y: u16) -> Result<(), ActuatorError> {
         self.x = x;
         self.y = y;
         info!("Set cursor position to {x} {y}");
+        Ok(())
     }
 
-    async fn move_cursor(&mut self, x: i16, y: i16) {
+    async fn move_cursor(&mut self, x: i16, y: i16) -> Result<(), ActuatorError> {
         self.x = (self.x as i32 + x as i32) as u16;
         self.y = (self.y as i32 + y as i32) as u16;
         info!("Move cursor by {x} {y}, now at {} {}", self.x, self.y);
+        Ok(())
     }
 
-    async fn mouse_down(&mut self, button: i8) {
+    async fn mouse_down(&mut self, button: i8) -> Result<(), ActuatorError> {
         info!("Mouse down {button}");
+        Ok(())
     }
 
-    async fn mouse_up(&mut self, button: i8) {
+    async fn mouse_up(&mut self, button: i8) -> Result<(), ActuatorError> {
         info!("Mouse up {button}");
+        Ok(())
     }
 
-    async fn mouse_wheel(&mut self, x: i16, y: i16) {
-        info!("Mouse wheel {x} {y}")
+    async fn mouse_wheel(&mut self, x: i16, y: i16) -> Result<(), ActuatorError> {
+        info!("Mouse wheel {x} {y}");
+        Ok(())
     }
 
-    async fn key_down(&mut self, key: u16, mask: u16, button: u16) {
-        info!("Key down {key} {mask} {button}")
+    async fn key_down(&mut self, key: u16, mask: u16, button: u16) -> Result<(), ActuatorError> {
+        info!("Key down {key} {mask} {button}");
+        Ok(())
     }
 
-    async fn key_repeat(&mut self, key: u16, mask: u16, button: u16, count: u16) {
-        info!("Key repeat {key} {mask} {button} {count}")
+    async fn key_repeat(
+        &mut self,
+        key: u16,
+        mask: u16,
+        button: u16,
+        count: u16,
+    ) -> Result<(), ActuatorError> {
+        info!("Key repeat {key} {mask} {button} {count}");
+        Ok(())
     }
 
-    async fn key_up(&mut self, key: u16, mask: u16, button: u16) {
-        info!("Key up {key} {mask} {button}")
+    async fn key_up(&mut self, key: u16, mask: u16, button: u16) -> Result<(), ActuatorError> {
+        info!("Key up {key} {mask} {button}");
+        Ok(())
     }
 
     #[cfg(feature = "barrier-options")]
-    async fn set_options(&mut self, opts: std::collections::HashMap<String, u32>) {
+    async fn set_options(
+        &mut self,
+        opts: std::collections::HashMap<String, u32>,
+    ) -> Result<(), ActuatorError> {
         self.options = opts;
-        info!("Set options {:#?}", self.options)
+        info!("Set options {:#?}", self.options);
+        Ok(())
     }
 
     #[cfg(feature = "barrier-options")]
-    async fn reset_options(&mut self) {
+    async fn reset_options(&mut self) -> Result<(), ActuatorError> {
         self.options.clear();
         info!("Reset options");
+        Ok(())
     }
 
-    async fn enter(&mut self) {
+    async fn enter(&mut self) -> Result<(), ActuatorError> {
         info!("Enter");
+        Ok(())
     }
 
-    async fn leave(&mut self) {
+    async fn leave(&mut self) -> Result<(), ActuatorError> {
         info!("Leave");
+        Ok(())
     }
 
     #[cfg(feature = "clipboard")]
-    async fn set_clipboard(&mut self, data: ClipboardData) {
+    async fn set_clipboard(&mut self, data: ClipboardData) -> Result<(), ActuatorError> {
         info!(
             "Clipboard text:{}",
             data.text()
@@ -105,6 +128,13 @@ impl Actuator for DummyActuator {
             "Clipboard bitmap:{}",
             data.bitmap().map(|_| "yes").unwrap_or("no")
         );
+        Ok(())
+    }
+
+    #[cfg(feature = "clipboard")]
+    async fn get_clipboard(&mut self) -> Result<Option<ClipboardData>, ActuatorError> {
+        info!("GetClipboard");
+        Ok(None)
     }
 }
 

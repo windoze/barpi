@@ -9,6 +9,7 @@ use crate::actuator::AsyncActuator;
 
 use super::{Actuator, ConnectionError, Packet, PacketReader, PacketStream, PacketWriter};
 
+#[allow(unused_assignments)]
 pub async fn start<A: Actuator, Addr: ToSocketAddrs, S: AsRef<str>>(
     addr: Addr,
     device_name: S,
@@ -133,20 +134,19 @@ pub async fn start<A: Actuator, Addr: ToSocketAddrs, S: AsRef<str>>(
                 actor.enter().await?;
             }
             Packet::CursorLeave => {
-                match actor.get_clipboard().await? {
-                    #[cfg(feature = "clipboard")]
-                    Some(data) => {
-                        last_seq_num += 1;
-                        info!("Clipboard: last_seq_num:{last_seq_num}, seq_num:{last_seq_num}, data:...");
-                        packet_stream
-                            .write(Packet::SetClipboard {
-                                id: 0,
-                                seq_num: last_seq_num,
-                                data,
-                            })
-                            .await?;
-                    }
-                    None => {}
+                #[cfg(feature = "clipboard")]
+                if let Some(data) = actor.get_clipboard().await? {
+                    last_seq_num += 1;
+                    info!(
+                        "Clipboard: last_seq_num:{last_seq_num}, seq_num:{last_seq_num}, data:..."
+                    );
+                    packet_stream
+                        .write(Packet::SetClipboard {
+                            id: 0,
+                            seq_num: last_seq_num,
+                            data,
+                        })
+                        .await?;
                 }
                 actor.leave().await?;
             }

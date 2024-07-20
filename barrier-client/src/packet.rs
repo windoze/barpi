@@ -1,4 +1,4 @@
-use log::{info, warn};
+use log::{debug, warn};
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 #[cfg(feature = "clipboard")]
@@ -125,6 +125,7 @@ impl Packet {
                 Ok(())
             }
             Packet::KeepAlive => {
+                debug!("Sending keepalive");
                 out.write_str("CALV").await?;
                 Ok(())
             }
@@ -141,8 +142,9 @@ impl Packet {
                 out.write_all(&buf).await?;
                 Ok(())
             }
+            #[cfg(feature = "clipboard")]
             Packet::SetClipboard { id, seq_num, data } => {
-                info!("Sending clipboard data: id:{id}, seq:{seq_num}");
+                debug!("Sending clipboard data: id:{id}, seq:{seq_num}");
                 if !data.raw_text().is_empty() {
                     // Chunk 1
                     let mut buf = Vec::new();
@@ -167,6 +169,7 @@ impl Packet {
     }
 }
 
+#[cfg(feature = "clipboard")]
 async fn write_chunk(
     out: &mut (impl AsyncWrite + Unpin + Send),
     id: u8,
