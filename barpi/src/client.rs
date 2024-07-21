@@ -3,7 +3,6 @@ use std::{fs::File, io::Write};
 use barrier_client::{Actuator, ActuatorError, ClipboardData};
 use log::{debug, error, info};
 use synergy_hid::{ReportType, SynergyHid};
-use tokio_util::sync::CancellationToken;
 pub struct BarpiActuator {
     width: u16,
     height: u16,
@@ -13,7 +12,6 @@ pub struct BarpiActuator {
     keyboard_file: File,
     mouse_file: File,
     consumer_file: File,
-    token: CancellationToken,
 }
 
 impl BarpiActuator {
@@ -24,7 +22,6 @@ impl BarpiActuator {
         keyboard_file: File,
         mouse_file: File,
         consumer_file: File,
-        token: CancellationToken,
     ) -> Self {
         Self {
             width,
@@ -35,7 +32,6 @@ impl BarpiActuator {
             keyboard_file,
             mouse_file,
             consumer_file,
-            token,
         }
     }
 
@@ -49,7 +45,10 @@ impl BarpiActuator {
     fn write_report(&mut self, report: (ReportType, &[u8])) {
         let r = match report.0 {
             ReportType::Keyboard => self.keyboard_file.write_all(report.1),
-            ReportType::Mouse => self.mouse_file.write_all(report.1),
+            ReportType::Mouse => {
+                error!("report: {:?}", report.1);
+                self.mouse_file.write_all(report.1)
+            }
             ReportType::Consumer => self.consumer_file.write_all(report.1),
             ReportType::Status => todo!(),
         };
@@ -57,7 +56,6 @@ impl BarpiActuator {
             Ok(_) => (),
             Err(e) => {
                 error!("Error writing report: {:?}", e);
-                self.token.cancel();
             }
         }
     }

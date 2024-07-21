@@ -215,7 +215,6 @@ async fn main() -> anyhow::Result<()> {
 
     let token = CancellationToken::new();
 
-    let cloned_token: CancellationToken = token.clone();
     let mut client = client::BarpiActuator::new(
         cfg.screen_width,
         cfg.screen_width,
@@ -223,7 +222,6 @@ async fn main() -> anyhow::Result<()> {
         fk,
         fm,
         fc,
-        cloned_token,
     );
 
     let main_task = async move {
