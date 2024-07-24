@@ -21,7 +21,7 @@ barrier-client = { path = "../barrier-client", default-features = false, feature
 synergy-hid = { path = "../synergy-hid" }
 
 [features]
-default = ["clipboard"]
+default = []
 # This feature needs access to the clipboard, thus needs GUI environment.
 # Turn it off if you want to use the service without GUI, e.g. on a terminal-only server.
 clipboard = ["barrier-client/clipboard", "dep:arboard"]
