@@ -17,7 +17,17 @@ pub async fn start<A: Actuator, Addr: ToSocketAddrs, S: AsRef<str>>(
 ) -> Result<(), ConnectionError> {
     let screen_size: (u16, u16) = actor.get_screen_size().await?;
 
-    let mut stream = TcpStream::connect(addr).await?;
+    let mut stream =
+        match tokio::time::timeout(std::time::Duration::from_secs(10), TcpStream::connect(addr))
+            .await
+        {
+            Ok(ok) => ok,
+            Err(e) => {
+                error!("Failed to connect: {:?}", e);
+                return Err(ConnectionError::Disconnected);
+            }
+        }?;
+
     // Turn off Nagle, this may not be available on ESP-IDF, so ignore the error.
     stream.set_nodelay(true).ok();
 
