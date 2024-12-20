@@ -188,6 +188,10 @@ enum {
   HID_USAGE_CONSUMER_BRIGHTNESS_INCREMENT              = 0x006F,
   HID_USAGE_CONSUMER_BRIGHTNESS_DECREMENT              = 0x0070,
 
+  // Keyboard Backlight Brightness
+  HID_USAGE_CONSUMER_KEYBOARD_BRIGHTNESS_INCREMENT     = 0x0079,
+  HID_USAGE_CONSUMER_KEYBOARD_BRIGHTNESS_DECREMENT     = 0x007A,
+
   // These HID usages operate only on mobile systems (battery powered) and
   // require Windows 8 (build 8302 or greater).
   HID_USAGE_CONSUMER_WIRELESS_RADIO_CONTROLS           = 0x000C,
@@ -569,6 +573,11 @@ void init_synergy_hid_key_table() {
     table['\\'] = HID_KEY_BACKSLASH;
     table['|'] = HID_KEY_BACKSLASH;
 
+    // NOTE: Since Barrier reads input events from the OS instead of the hardware,
+    // it supports much more event types than USB HID standard, e.g. Hyper key is
+    // emulated on most systems but Barrier can see it and send it out, but HID device
+    // cannot send it to the host as there is no corresponding key code and USB device
+    // doesn't know how host OS emulates the event.
     table[ kKeyBackSpace ] = HID_KEY_BACKSPACE ;
     table[ kKeyTab ] = HID_KEY_TAB ;
     // table[ kKeyLinefeed ] = HID_KEY_ ;
@@ -611,6 +620,7 @@ void init_synergy_hid_key_table() {
     // table[ kKeyAltGr ] = HID_KEY_ ;
     table[ kKeyNumLock ] = HID_KEY_NUM_LOCK ;
 
+    // NOTE: These keys are for KeyPad only, not exist in USB HID standard
     // table[ kKeyKP_Space ] = HID_KEY_KEYPAD_ ;
     // table[ kKeyKP_Tab ] = HID_KEY_KEYPAD_ ;
     table[ kKeyKP_Enter ] = HID_KEY_KEYPAD_ENTER ;
@@ -670,6 +680,7 @@ void init_synergy_hid_key_table() {
     table[ kKeyF22 ] = HID_KEY_F22 ;
     table[ kKeyF23 ] = HID_KEY_F23 ;
     table[ kKeyF24 ] = HID_KEY_F24 ;
+    // NOTE: USB HID standard has only 24 F keys
     // table[ kKeyF25 ] = HID_KEY_F25 ;
     // table[ kKeyF26 ] = HID_KEY_F26 ;
     // table[ kKeyF27 ] = HID_KEY_F27 ;
@@ -686,6 +697,10 @@ void init_synergy_hid_key_table() {
     table[ kKeyControl_L ] = HID_KEY_CONTROL_LEFT ;
     table[ kKeyControl_R ] = HID_KEY_CONTROL_RIGHT ;
     table[ kKeyCapsLock ] = HID_KEY_CAPS_LOCK ;
+    // NOTE: In USB HID standard ShiftLock is not a key code but a generic desktop usage
+    // TODO: Need to have a separated report to send GD usage, and this report cannot be
+    // inside of Keyboard descriptor because the Keyboard report is the standard USB boot
+    // protocol, maybe I can add it into the Consumer report.
     // table[ kKeyShiftLock ] = HID_KEY_ ;
     table[ kKeyMeta_L ] = HID_KEY_ALT_LEFT ;
     table[ kKeyMeta_R ] = HID_KEY_ALT_RIGHT ;
@@ -693,6 +708,8 @@ void init_synergy_hid_key_table() {
     table[ kKeyAlt_R ] = HID_KEY_ALT_RIGHT ;
     table[ kKeySuper_L ] = HID_KEY_GUI_LEFT ;
     table[ kKeySuper_R ] = HID_KEY_GUI_RIGHT ;
+
+    // NOTE: USB HID standard doesn't have Hyper key
     // table[ kKeyHyper_L ] = HID_KEY_ ;
     // table[ kKeyHyper_R ] = HID_KEY_ ;
 
@@ -718,8 +735,10 @@ void init_synergy_hid_key_table() {
     // consumer_table[ kKeyAppUser2 ] = HID_KEY_ ;
     consumer_table[ kKeyBrightnessDown ] = HID_USAGE_CONSUMER_BRIGHTNESS_DECREMENT;
     consumer_table[ kKeyBrightnessUp ] = HID_USAGE_CONSUMER_BRIGHTNESS_INCREMENT;
-    // consumer_table[ kKeyKbdBrightnessDown ] = HID_USAGE_CONSUMER_ ;
-    // consumer_table[ kKeyKbdBrightnessUp ] = HID_USAGE_CONSUMER_ ;
+    consumer_table[ kKeyKbdBrightnessDown ] = HID_USAGE_CONSUMER_KEYBOARD_BRIGHTNESS_DECREMENT ;
+    consumer_table[ kKeyKbdBrightnessUp ] = HID_USAGE_CONSUMER_KEYBOARD_BRIGHTNESS_INCREMENT ;
+
+    // These 2 keys are only available on Apple branded keyboards
     // consumer_table[ kKeyMissionControl ] = HID_KEY_ ;
     // consumer_table[ kKeyLaunchpad ] = HID_KEY_ ;
 
